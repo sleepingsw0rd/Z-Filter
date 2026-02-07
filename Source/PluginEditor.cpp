@@ -288,8 +288,8 @@ ZFilterEditor::ZFilterEditor(ZFilterProcessor& p)
 {
     setSize(1200, 344);
 
-    // Load background image (1200px wide version)
-    backgroundImage = juce::ImageCache::getFromMemory(BinaryData::GUINoControlsNoBigKnob1200_png, BinaryData::GUINoControlsNoBigKnob1200_pngSize);
+    // Load background image (1200px wide version with logo)
+    backgroundImage = juce::ImageCache::getFromMemory(BinaryData::GUIWithLogo1200_png, BinaryData::GUIWithLogo1200_pngSize);
 
     // LCD
     addAndMakeVisible(lcd);
@@ -552,11 +552,11 @@ void ZFilterEditor::paint(juce::Graphics& g)
 
 void ZFilterEditor::resized()
 {
-    // LCD display - wider for 1200px layout
-    lcd.setBounds(115, 62, 580, 110);
+    // LCD display - shifted right to make room for logo
+    lcd.setBounds(270, 62, 520, 110);
 
-    // Frequency knob (large) - pushed right for wider layout
-    frequencyKnob.setBounds(900, 18, 188, 188);
+    // Frequency knob (large) - aligned with knob recess in background
+    frequencyKnob.setBounds(990, 18, 188, 188);
 
     // Control strip layout for 1200px width
     // 19 controls at 57px center-to-center spacing, starting at center=82
