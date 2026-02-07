@@ -240,6 +240,8 @@ private:
     KnobComponent outputKnob    { KnobComponent::Small };
     KnobComponent mixKnob       { KnobComponent::Small };
     KnobComponent inputKnob     { KnobComponent::Small };
+    KnobComponent lfoSpeedKnob  { KnobComponent::Small };
+    KnobComponent lfoDepthKnob  { KnobComponent::Small };
 
     // Buttons
     RoundButtonComponent bypassBtn;
@@ -247,6 +249,16 @@ private:
     RoundButtonComponent hpBtn;
     RoundButtonComponent bpBtn;
     RoundButtonComponent ntBtn;
+    RoundButtonComponent rgBtn;
+    RoundButtonComponent lfoSyncBtn;
+    RoundButtonComponent zOutBtn;
+
+    // Morph controls
+    RoundButtonComponent morphEnableBtn;
+    RoundButtonComponent filterABtn;
+    RoundButtonComponent filterBBtn;
+    KnobComponent morphKnob { KnobComponent::Small };
+    RoundButtonComponent lfoTargetBtn;
 
     // LEDs
     LEDComponent bypassLED;
@@ -254,6 +266,13 @@ private:
     LEDComponent hpLED;
     LEDComponent bpLED;
     LEDComponent ntLED;
+    LEDComponent rgLED;
+    LEDComponent lfoSyncLED;
+    LEDComponent zOutLED;
+    LEDComponent morphEnableLED;
+    LEDComponent filterALED;
+    LEDComponent filterBLED;
+    LEDComponent lfoTargetLED;
 
     // Parameter attachments
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> frequencyAttachment;
@@ -261,6 +280,9 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> outputAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> inputAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> lfoSpeedAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> lfoDepthAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> morphAttachment;
 
     void updateDisplay();
 

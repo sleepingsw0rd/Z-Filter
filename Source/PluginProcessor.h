@@ -50,7 +50,7 @@ public:
     //==============================================================================
     juce::AudioProcessorValueTreeState apvts;
 
-    enum FilterType { Lowpass = 0, Highpass, Bandpass, Notch };
+    enum FilterType { Lowpass = 0, Highpass, Bandpass, Notch, Region };
 
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -71,25 +71,45 @@ private:
         fix_total
     };
 
-    // Filter state arrays
+    // Filter state arrays (Filter A / primary)
     double biquadA[biq_total] = {};
     double biquadB[biq_total] = {};
     double biquadC[biq_total] = {};
     double biquadD[biq_total] = {};
+    double biquadE[biq_total] = {};
+
+    // Second filter (B) biquad arrays for morphing
+    double biquadA2[biq_total] = {};
+    double biquadB2[biq_total] = {};
+    double biquadC2[biq_total] = {};
+    double biquadD2[biq_total] = {};
+    double biquadE2[biq_total] = {};
 
     // Opamp stage state
     double fixA[fix_total] = {};
     double fixB[fix_total] = {};
 
+    // Second opamp/IIR state for Region crossfade
+    double fixA2[fix_total] = {};
+    double fixB2[fix_total] = {};
+
     // IIR state
     double iirSampleAL = 0.0;
     double iirSampleAR = 0.0;
+    double iirSampleBL = 0.0;
+    double iirSampleBR = 0.0;
 
     // Smoothing state
     double inTrimA = 0.0, inTrimB = 0.0;
     double outTrimA = 0.0, outTrimB = 0.0;
     double wetA = 0.0, wetB = 0.0;
     double mixA = 0.0, mixB = 0.0;
+
+    // Morph smoothing state
+    double morphA = 0.0, morphB = 0.0;
+
+    // LFO state
+    double lfoPhase = 0.0;
 
     // Dither state
     uint32_t fpdL = 1, fpdR = 1;

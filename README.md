@@ -1,13 +1,16 @@
 # Z-Filter
 
-A multi-mode biquad filter audio plugin built with JUCE, based on the Airwindows Z-series filters by Chris Johnson.
+A multi-mode morphing biquad filter audio plugin built with JUCE, based on the Airwindows Z-series filters by Chris Johnson.
 
-![Z-Filter GUI](GUI/GUI.png)
+![Z-Filter GUI](GUI/Screenshot.png)
 
 ## Features
 
-- **4 Filter Types**: Lowpass, Highpass, Bandpass, Notch
+- **5 Filter Types**: Lowpass, Highpass, Bandpass, Notch, Region Gate
+- **Filter Morphing**: Smoothly blend between two filter types (A and B) with independent type selection
 - **Cascaded Biquad Architecture**: Up to 4 cascaded filter stages (12-48 dB/octave) controlled by the Resonance knob
+- **LFO Modulation**: Tempo-syncable LFO with adjustable speed and depth, targeting Cutoff, Morph, or both
+- **Z-Output Stage**: Optional Airwindows output processing stage for analog character
 - **Input & Output Level Controls**: Input gain (-20dB to +20dB) drives the filter's saturation character; Output gain for final level adjustment
 - **Opamp Modeling Stage**: Dual lowpass filters sandwiching a polynomial soft saturator, simulating bandwidth-limited analog op-amp behavior
 - **Dot-Matrix LCD Display**: Real-time parameter readout in an HD44780-style display
@@ -20,12 +23,21 @@ A multi-mode biquad filter audio plugin built with JUCE, based on the Airwindows
 | Control | Function | Range |
 |---------|----------|-------|
 | **Frequency** (large knob) | Filter cutoff frequency | Full audio range |
+| **Bypass** | Bypass all processing | On/Off |
+| **ZOut** | Enable Z-Output stage | On/Off |
+| **Morph** (enable) | Enable filter morphing between A and B types | On/Off |
+| **A>LP** (Flt A) | Filter A type selector | LP/HP/BP/NT/RG (cycles on click) |
+| **Mrph** (knob) | Morph blend between Filter A and B | 0% to 100% |
+| **B>BP** (Flt B) | Filter B type selector | LP/HP/BP/NT/RG (cycles on click) |
+| **LP / HP / BP / NT / RG** | Quick-set Filter A type | Lowpass, Highpass, Bandpass, Notch, Region Gate |
+| **Spd** | LFO speed | 0.01 Hz to 20 Hz (free) or tempo-synced divisions |
+| **Dpt** | LFO depth | 0% to 100% |
+| **Sync** | LFO tempo sync | On/Off |
+| **Tgt>CUT** (Tgt) | LFO modulation target | Cutoff / Morph / Both |
 | **Input** | Pre-filter input gain | -20dB to +20dB (center = unity) |
 | **Res** | Filter resonance / cascade depth | 1 stage (gentle) to 4 stages (steep) |
 | **Level** | Post-filter output gain | 0 to +20dB |
 | **Mix** | Dry/wet blend | 0% (dry) to 100% (wet) |
-| **LP / HP / BP / NT** | Filter type selection | Lowpass, Highpass, Bandpass, Notch |
-| **Bypass** | Bypass all processing | On/Off |
 
 ## Building
 
@@ -60,9 +72,8 @@ Z-Filter/
     AirwindowsReference/
       FilterReference.h                  # Original Airwindows algorithm documentation
   GUI/
-    GUI.png                              # Plugin screenshot
-    GUI-NoControls.png                   # Background asset (no controls)
-    GUI-NoControls-NoBigKnob.png         # Background asset (runtime background)
+    Screenshot.png                       # Plugin screenshot
+    GUI-NoControls-NoBigKnob-1200.png    # Background asset (runtime background)
 ```
 
 ## DSP Signal Flow

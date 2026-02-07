@@ -22,8 +22,23 @@ juce::AudioProcessorValueTreeState::ParameterLayout ZFilterProcessor::createPara
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
 
     params.push_back(std::make_unique<juce::AudioParameterChoice>(
-        juce::ParameterID("filterType", 1), "Filter Type",
-        juce::StringArray{ "Lowpass", "Highpass", "Bandpass", "Notch" }, 0));
+        juce::ParameterID("filterTypeA", 1), "Filter Type A",
+        juce::StringArray{ "Lowpass", "Highpass", "Bandpass", "Notch", "Region" }, 0));
+
+    params.push_back(std::make_unique<juce::AudioParameterChoice>(
+        juce::ParameterID("filterTypeB", 1), "Filter Type B",
+        juce::StringArray{ "Lowpass", "Highpass", "Bandpass", "Notch", "Region" }, 2));
+
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("morphEnabled", 1), "Morph Enabled", false));
+
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("morph", 1), "Morph",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 0.0f));
+
+    params.push_back(std::make_unique<juce::AudioParameterChoice>(
+        juce::ParameterID("lfoTarget", 1), "LFO Target",
+        juce::StringArray{ "Cutoff", "Morph", "Both" }, 0));
 
     params.push_back(std::make_unique<juce::AudioParameterBool>(
         juce::ParameterID("bypass", 1), "Bypass", false));
@@ -48,6 +63,20 @@ juce::AudioProcessorValueTreeState::ParameterLayout ZFilterProcessor::createPara
         juce::ParameterID("resonance", 1), "Resonance",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 0.5f));
 
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("zOutputStage", 1), "ZOutputStage", false));
+
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("lfoSpeed", 1), "LFO Speed",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 0.25f));
+
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("lfoDepth", 1), "LFO Depth",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 0.0f));
+
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("lfoSync", 1), "LFO Sync", false));
+
     return { params.begin(), params.end() };
 }
 
@@ -71,17 +100,28 @@ void ZFilterProcessor::prepareToPlay(double, int)
     std::fill(std::begin(biquadB), std::end(biquadB), 0.0);
     std::fill(std::begin(biquadC), std::end(biquadC), 0.0);
     std::fill(std::begin(biquadD), std::end(biquadD), 0.0);
+    std::fill(std::begin(biquadE), std::end(biquadE), 0.0);
+    std::fill(std::begin(biquadA2), std::end(biquadA2), 0.0);
+    std::fill(std::begin(biquadB2), std::end(biquadB2), 0.0);
+    std::fill(std::begin(biquadC2), std::end(biquadC2), 0.0);
+    std::fill(std::begin(biquadD2), std::end(biquadD2), 0.0);
+    std::fill(std::begin(biquadE2), std::end(biquadE2), 0.0);
     std::fill(std::begin(fixA), std::end(fixA), 0.0);
     std::fill(std::begin(fixB), std::end(fixB), 0.0);
+    std::fill(std::begin(fixA2), std::end(fixA2), 0.0);
+    std::fill(std::begin(fixB2), std::end(fixB2), 0.0);
 
     iirSampleAL = iirSampleAR = 0.0;
+    iirSampleBL = iirSampleBR = 0.0;
+    morphA = morphB = 0.0;
+    lfoPhase = 0.0;
     inTrimA = inTrimB = 1.0;
     outTrimA = outTrimB = 0.0;
     wetA = wetB = 0.0;
     mixA = mixB = 0.0;
 
-    fpdL = 1; while (fpdL < 16386) fpdL = rand() * UINT32_MAX;
-    fpdR = 1; while (fpdR < 16386) fpdR = rand() * UINT32_MAX;
+    fpdL = 1; while (fpdL < 16386) fpdL = (uint32_t)rand() * (uint32_t)UINT32_MAX;
+    fpdR = 1; while (fpdR < 16386) fpdR = (uint32_t)rand() * (uint32_t)UINT32_MAX;
 }
 
 void ZFilterProcessor::releaseResources() {}
@@ -106,101 +146,191 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
         buffer.clear(i, 0, buffer.getNumSamples());
 
     // Read parameters
-    const int filterType = (int)*apvts.getRawParameterValue("filterType");
+    const int filterTypeA = (int)*apvts.getRawParameterValue("filterTypeA");
+    const int filterTypeB = (int)*apvts.getRawParameterValue("filterTypeB");
+    const bool morphEnabled = *apvts.getRawParameterValue("morphEnabled") > 0.5f;
+    const float morphParam = *apvts.getRawParameterValue("morph");
+    const int lfoTarget = (int)*apvts.getRawParameterValue("lfoTarget");
+    // When morph disabled, use filterTypeA as the active filter type
+    const int filterType = filterTypeA;
     const bool bypassed = *apvts.getRawParameterValue("bypass") > 0.5f;
     const float mixParam = *apvts.getRawParameterValue("mix");
     const float B = *apvts.getRawParameterValue("frequency");
     const float C = *apvts.getRawParameterValue("output");
     const float D = *apvts.getRawParameterValue("resonance");
     const float inputGain = *apvts.getRawParameterValue("input");
+    const bool zOutEnabled = *apvts.getRawParameterValue("zOutputStage") > 0.5f;
+    const float lfoSpeedParam = *apvts.getRawParameterValue("lfoSpeed");
+    const float lfoDepth = *apvts.getRawParameterValue("lfoDepth");
+    const bool lfoSyncEnabled = *apvts.getRawParameterValue("lfoSync") > 0.5f;
+
+    // Morph smoothing
+    morphA = morphB;
+    morphB = morphEnabled ? (double)morphParam : 0.0;
 
     if (bypassed)
         return;
 
     const int sampleFrames = buffer.getNumSamples();
+    if (sampleFrames == 0) return;
     const int inFramesToProcess = sampleFrames;
     const double sr = getSampleRate();
     double overallscale = 1.0;
     overallscale /= 44100.0;
     overallscale *= sr;
 
-    // Compute biquad coefficients based on filter type
-    double clipFactor = 1.0;
-    bool useClipFactor = false;
-
-    switch (filterType)
+    // Helper: compute biquad freq/reso and coefficients for a given filter type
+    auto computeFilterCoeffs = [&](int type, double B_val, double D_val,
+                                    double* bqA, double* bqB, double* bqC,
+                                    double* bqD, double* bqE,
+                                    double& outClipFactor, bool& outUseClip)
     {
-        case Lowpass:
-            biquadA[biq_freq] = ((pow(B, 3) * 18930.0) / sr) + 0.00162;
-            clipFactor = 1.212 - ((1.0 - B) * 0.496);
-            useClipFactor = true;
-            biquadA[biq_reso] = 0.7071;
-            break;
-        case Highpass:
-            biquadA[biq_freq] = ((pow(B, 4) * 9500.0) / sr) + 0.00076;
-            biquadA[biq_reso] = 1.0;
-            break;
-        case Bandpass:
-            biquadA[biq_freq] = ((pow(B, 4) * 14300.0) / sr) + 0.00079;
-            clipFactor = 1.0 - ((1.0 - B) * 0.304);
-            useClipFactor = true;
-            biquadA[biq_reso] = 0.314;
-            break;
-        case Notch:
-            biquadA[biq_freq] = ((pow(B, 3) * 4700.0) / sr) + 0.0009963;
-            clipFactor = 0.91 - ((1.0 - B) * 0.15);
-            useClipFactor = true;
-            biquadA[biq_reso] = 0.618;
-            break;
+        outClipFactor = 1.0;
+        outUseClip = false;
+
+        switch (type)
+        {
+            case Lowpass:
+                bqA[biq_freq] = ((pow(B_val, 3) * 18930.0) / sr) + 0.00162;
+                outClipFactor = 1.212 - ((1.0 - B_val) * 0.496);
+                outUseClip = true;
+                bqA[biq_reso] = 0.7071;
+                break;
+            case Highpass:
+                bqA[biq_freq] = ((pow(B_val, 4) * 9500.0) / sr) + 0.00076;
+                bqA[biq_reso] = 1.0;
+                break;
+            case Bandpass:
+                bqA[biq_freq] = ((pow(B_val, 4) * 14300.0) / sr) + 0.00079;
+                outClipFactor = 1.0 - ((1.0 - B_val) * 0.304);
+                outUseClip = true;
+                bqA[biq_reso] = 0.314;
+                break;
+            case Notch:
+                bqA[biq_freq] = ((pow(B_val, 3) * 4700.0) / sr) + 0.0009963;
+                outClipFactor = 0.91 - ((1.0 - B_val) * 0.15);
+                outUseClip = true;
+                bqA[biq_reso] = 0.618;
+                break;
+            case Region:
+            {
+                double center = B_val;
+                double spreadAmt = D_val;
+                double halfSpread = spreadAmt * 0.5;
+                double high = juce::jmin(center + halfSpread, 1.0);
+                double low  = juce::jmax(center - halfSpread, 0.0);
+                double mid  = (high + low) * 0.5;
+
+                bqE[biq_freq] = pow(high, 3) * 20000.0 / sr;
+                bqA[biq_freq] = pow((high + mid) * 0.5, 3) * 20000.0 / sr;
+                bqB[biq_freq] = pow(mid, 3) * 20000.0 / sr;
+                bqC[biq_freq] = pow((mid + low) * 0.5, 3) * 20000.0 / sr;
+                bqD[biq_freq] = pow(low, 3) * 20000.0 / sr;
+
+                auto clampFreq = [](double& f) { if (f < 0.00009) f = 0.00009; };
+                clampFreq(bqE[biq_freq]); clampFreq(bqA[biq_freq]);
+                clampFreq(bqB[biq_freq]); clampFreq(bqC[biq_freq]);
+                clampFreq(bqD[biq_freq]);
+
+                bqE[biq_reso] = bqA[biq_reso] = bqB[biq_reso] =
+                    bqC[biq_reso] = bqD[biq_reso] = 0.7071;
+                break;
+            }
+        }
+
+        // Compute coefficients
+        auto savePrev = [](double* bq) {
+            bq[biq_aA0] = bq[biq_aB0]; bq[biq_aA1] = bq[biq_aB1];
+            bq[biq_aA2] = bq[biq_aB2]; bq[biq_bA1] = bq[biq_bB1];
+            bq[biq_bA2] = bq[biq_bB2];
+        };
+        auto computeBandpass = [](double* bq) {
+            double Kc = tan(juce::MathConstants<double>::pi * bq[biq_freq]);
+            double normC = 1.0 / (1.0 + Kc / bq[biq_reso] + Kc * Kc);
+            bq[biq_aB0] = Kc / bq[biq_reso] * normC;
+            bq[biq_aB1] = 0.0;
+            bq[biq_aB2] = -bq[biq_aB0];
+            bq[biq_bB1] = 2.0 * (Kc * Kc - 1.0) * normC;
+            bq[biq_bB2] = (1.0 - Kc / bq[biq_reso] + Kc * Kc) * normC;
+        };
+
+        if (type == Region)
+        {
+            for (auto* bq : {bqE, bqA, bqB, bqC, bqD}) {
+                savePrev(bq);
+                computeBandpass(bq);
+            }
+        }
+        else
+        {
+            savePrev(bqA);
+            double Kv = tan(juce::MathConstants<double>::pi * bqA[biq_freq]);
+            double normv = 1.0 / (1.0 + Kv / bqA[biq_reso] + Kv * Kv);
+
+            switch (type) {
+                case Lowpass:
+                    bqA[biq_aB0] = Kv * Kv * normv;
+                    bqA[biq_aB1] = 2.0 * bqA[biq_aB0];
+                    bqA[biq_aB2] = bqA[biq_aB0];
+                    break;
+                case Highpass:
+                    bqA[biq_aB0] = normv;
+                    bqA[biq_aB1] = -2.0 * bqA[biq_aB0];
+                    bqA[biq_aB2] = bqA[biq_aB0];
+                    break;
+                case Bandpass:
+                    bqA[biq_aB0] = Kv / bqA[biq_reso] * normv;
+                    bqA[biq_aB1] = 0.0;
+                    bqA[biq_aB2] = -bqA[biq_aB0];
+                    break;
+                case Notch:
+                    bqA[biq_aB0] = (1.0 + Kv * Kv) * normv;
+                    bqA[biq_aB1] = 2.0 * (Kv * Kv - 1.0) * normv;
+                    bqA[biq_aB2] = bqA[biq_aB0];
+                    break;
+                default: break;
+            }
+            bqA[biq_bB1] = 2.0 * (Kv * Kv - 1.0) * normv;
+            bqA[biq_bB2] = (1.0 - Kv / bqA[biq_reso] + Kv * Kv) * normv;
+        }
+    };
+
+    // Compute coefficients for Filter A (primary arrays)
+    double clipFactorA = 1.0; bool useClipA = false;
+    computeFilterCoeffs(filterType, (double)B, (double)D,
+        biquadA, biquadB, biquadC, biquadD, biquadE,
+        clipFactorA, useClipA);
+
+    // Compute coefficients for Filter B (second arrays) when morph is enabled
+    double clipFactorB = 1.0; bool useClipB = false;
+    if (morphEnabled) {
+        computeFilterCoeffs(filterTypeB, (double)B, (double)D,
+            biquadA2, biquadB2, biquadC2, biquadD2, biquadE2,
+            clipFactorB, useClipB);
     }
-
-    // Save previous coefficients for interpolation
-    biquadA[biq_aA0] = biquadA[biq_aB0];
-    biquadA[biq_aA1] = biquadA[biq_aB1];
-    biquadA[biq_aA2] = biquadA[biq_aB2];
-    biquadA[biq_bA1] = biquadA[biq_bB1];
-    biquadA[biq_bA2] = biquadA[biq_bB2];
-
-    double K = tan(juce::MathConstants<double>::pi * biquadA[biq_freq]);
-    double norm = 1.0 / (1.0 + K / biquadA[biq_reso] + K * K);
-
-    switch (filterType)
-    {
-        case Lowpass:
-            biquadA[biq_aB0] = K * K * norm;
-            biquadA[biq_aB1] = 2.0 * biquadA[biq_aB0];
-            biquadA[biq_aB2] = biquadA[biq_aB0];
-            break;
-        case Highpass:
-            biquadA[biq_aB0] = norm;
-            biquadA[biq_aB1] = -2.0 * biquadA[biq_aB0];
-            biquadA[biq_aB2] = biquadA[biq_aB0];
-            break;
-        case Bandpass:
-            biquadA[biq_aB0] = K / biquadA[biq_reso] * norm;
-            biquadA[biq_aB1] = 0.0;
-            biquadA[biq_aB2] = -biquadA[biq_aB0];
-            break;
-        case Notch:
-            biquadA[biq_aB0] = (1.0 + K * K) * norm;
-            biquadA[biq_aB1] = 2.0 * (K * K - 1.0) * norm;
-            biquadA[biq_aB2] = biquadA[biq_aB0];
-            break;
-    }
-    biquadA[biq_bB1] = 2.0 * (K * K - 1.0) * norm;
-    biquadA[biq_bB2] = (1.0 - K / biquadA[biq_reso] + K * K) * norm;
 
     // Smoothing
     mixA = mixB;
     mixB = (double)mixParam;
     inTrimA = inTrimB;
-    inTrimB = pow(10.0, (double)inputGain * 2.0 - 1.0);
+    if (zOutEnabled) {
+        double t = (double)inputGain * 10.0;
+        t *= t; t *= t;
+        inTrimB = t;
+    } else {
+        inTrimB = pow(10.0, (double)inputGain * 2.0 - 1.0);
+    }
     outTrimA = outTrimB;
-    outTrimB = C * 10.0;
+    if (zOutEnabled) {
+        outTrimB = (double)C;
+    } else {
+        outTrimB = C * 10.0;
+    }
     wetA = wetB;
     wetB = pow(D, 2);
 
     double iirAmountA = 0.00069 / overallscale;
+    double K, norm;
     fixA[fix_freq] = fixB[fix_freq] = 15500.0 / sr;
     fixA[fix_reso] = fixB[fix_reso] = 0.935;
     K = tan(juce::MathConstants<double>::pi * fixB[fix_freq]);
@@ -210,8 +340,293 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
     fixA[fix_a2] = fixB[fix_a2] = fixB[fix_a0];
     fixA[fix_b1] = fixB[fix_b1] = 2.0 * (K * K - 1.0) * norm;
     fixA[fix_b2] = fixB[fix_b2] = (1.0 - K / fixB[fix_reso] + K * K) * norm;
+    // Copy opamp coefficients to second set for Region crossfade
+    for (int x = fix_freq; x <= fix_b2; x++) {
+        fixA2[x] = fixA[x];
+        fixB2[x] = fixB[x];
+    }
 
     double trim = 0.1 + (3.712 * biquadA[biq_freq]);
+
+    // Determine if we need Region crossfade mode for morphing
+    bool morphRegionCrossfade = morphEnabled &&
+        (filterType == Region || filterTypeB == Region);
+    bool morphCoefficientBlend = morphEnabled && !morphRegionCrossfade;
+
+    // LFO frequency computation
+    double lfoFreqHz = 0.0;
+    if (lfoSyncEnabled)
+    {
+        double bpm = 120.0;
+        if (auto* ph = getPlayHead()) {
+            if (auto pos = ph->getPosition()) {
+                if (pos->getBpm().hasValue())
+                    bpm = *pos->getBpm();
+            }
+        }
+
+        struct SyncDiv { const char* name; double beats; };
+        static const SyncDiv divisions[] = {
+            {"4/1",  16.0},    {"4/1D", 24.0},    {"4/1T", 10.667},
+            {"2/1",  8.0},     {"2/1D", 12.0},    {"2/1T", 5.333},
+            {"1/1",  4.0},     {"1/1D", 6.0},     {"1/1T", 2.667},
+            {"1/2",  2.0},     {"1/2D", 3.0},     {"1/2T", 1.333},
+            {"1/4",  1.0},     {"1/4D", 1.5},     {"1/4T", 0.667},
+            {"1/8",  0.5},     {"1/8D", 0.75},    {"1/8T", 0.333},
+            {"1/16", 0.25},    {"1/16D",0.375},   {"1/16T",0.167},
+            {"1/32", 0.125},   {"1/32D",0.1875},  {"1/32T",0.0833},
+            {"1/64", 0.0625},  {"1/64D",0.09375}, {"1/64T",0.04167},
+        };
+        static const int numDivisions = 27;
+
+        int divIndex = juce::jlimit(0, numDivisions - 1,
+            (int)(lfoSpeedParam * (numDivisions - 1) + 0.5f));
+        double beatsPerCycle = divisions[divIndex].beats;
+        double secondsPerBeat = 60.0 / bpm;
+        double cyclePeriod = beatsPerCycle * secondsPerBeat;
+        lfoFreqHz = 1.0 / cyclePeriod;
+    }
+    else
+    {
+        lfoFreqHz = 0.01 * pow(2000.0, (double)lfoSpeedParam);
+    }
+    double lfoPhaseInc = lfoFreqHz / sr;
+
+    // Helper: compute per-sample coefficients for a given filter type at a given frequency
+    auto computePerSampleCoeffs = [&](int type, double modB, double* bqA_arr) {
+        double modFreq;
+        switch (type) {
+            case Lowpass:  modFreq = ((pow(modB, 3) * 18930.0) / sr) + 0.00162; break;
+            case Highpass: modFreq = ((pow(modB, 4) * 9500.0) / sr) + 0.00076; break;
+            case Bandpass: modFreq = ((pow(modB, 4) * 14300.0) / sr) + 0.00079; break;
+            case Notch:    modFreq = ((pow(modB, 3) * 4700.0) / sr) + 0.0009963; break;
+            default:       modFreq = bqA_arr[biq_freq]; break;
+        }
+        double Km = tan(juce::MathConstants<double>::pi * modFreq);
+        double normm = 1.0 / (1.0 + Km / bqA_arr[biq_reso] + Km * Km);
+        switch (type) {
+            case Lowpass:
+                bqA_arr[biq_a0] = Km * Km * normm;
+                bqA_arr[biq_a1] = 2.0 * bqA_arr[biq_a0];
+                bqA_arr[biq_a2] = bqA_arr[biq_a0];
+                break;
+            case Highpass:
+                bqA_arr[biq_a0] = normm;
+                bqA_arr[biq_a1] = -2.0 * bqA_arr[biq_a0];
+                bqA_arr[biq_a2] = bqA_arr[biq_a0];
+                break;
+            case Bandpass:
+                bqA_arr[biq_a0] = Km / bqA_arr[biq_reso] * normm;
+                bqA_arr[biq_a1] = 0.0;
+                bqA_arr[biq_a2] = -bqA_arr[biq_a0];
+                break;
+            case Notch:
+                bqA_arr[biq_a0] = (1.0 + Km * Km) * normm;
+                bqA_arr[biq_a1] = 2.0 * (Km * Km - 1.0) * normm;
+                bqA_arr[biq_a2] = bqA_arr[biq_a0];
+                break;
+            default: break;
+        }
+        bqA_arr[biq_b1] = 2.0 * (Km * Km - 1.0) * normm;
+        bqA_arr[biq_b2] = (1.0 - Km / bqA_arr[biq_reso] + Km * Km) * normm;
+    };
+
+    // Helper lambdas for per-sample processing
+    auto sineClip = [](double& sample, double cf) {
+        sample *= cf;
+        if (sample > 1.57079633) sample = 1.57079633;
+        if (sample < -1.57079633) sample = -1.57079633;
+        sample = sin(sample);
+    };
+
+    auto applyBiquad = [](double input, double* bq, int sIdx1, int sIdx2) -> double {
+        double out = (input * bq[biq_a0]) + bq[sIdx1];
+        bq[sIdx1] = (input * bq[biq_a1]) - (out * bq[biq_b1]) + bq[sIdx2];
+        bq[sIdx2] = (input * bq[biq_a2]) - (out * bq[biq_b2]);
+        return out;
+    };
+
+    // Region processing lambda
+    auto processRegion = [&](double& smpL, double& smpR, double& dryL, double& dryR,
+                             double* bqA_arr, double* bqB_arr, double* bqC_arr,
+                             double* bqD_arr, double* bqE_arr,
+                             double B_val, double D_val) {
+        double spreadAmt = D_val;
+        double halfSpread = spreadAmt * 0.5;
+        double center = B_val;
+        double high = juce::jmin(center + halfSpread, 1.0);
+        double low  = juce::jmax(center - halfSpread, 0.0);
+        double spread = 1.001 - fabs(high - low);
+
+        double* bqs[5] = { bqE_arr, bqA_arr, bqB_arr, bqC_arr, bqD_arr };
+        double cfs[5], comps[5];
+        for (int s = 0; s < 5; s++) {
+            cfs[s]   = 0.75 + (bqs[s][biq_freq] * spreadAmt * 37.0);
+            comps[s] = sqrt(bqs[s][biq_freq]) * 6.4 * spread;
+            if (comps[s] < 0.001) comps[s] = 0.001;
+        }
+
+        double raWet = 1.0, rbWet = 1.0, rcWet = 1.0, rdWet = spreadAmt * 4.0;
+        if (rdWet < 1.0)      { raWet = rdWet; rbWet = 0.0; rcWet = 0.0; rdWet = 0.0; }
+        else if (rdWet < 2.0) { rbWet = rdWet - 1.0; rcWet = 0.0; rdWet = 0.0; }
+        else if (rdWet < 3.0) { rcWet = rdWet - 2.0; rdWet = 0.0; }
+        else                  { rdWet -= 3.0; }
+
+        // Stage E
+        sineClip(smpL, cfs[0]); sineClip(smpR, cfs[0]);
+        smpL = applyBiquad(smpL, bqE_arr, biq_sL1, biq_sL2) / comps[0];
+        smpR = applyBiquad(smpR, bqE_arr, biq_sR1, biq_sR2) / comps[0];
+        dryL = smpL; dryR = smpR;
+
+        // Stage A
+        {
+            sineClip(smpL, cfs[1]); sineClip(smpR, cfs[1]);
+            double outL = applyBiquad(smpL, bqA_arr, biq_sL1, biq_sL2) / comps[1];
+            double outR = applyBiquad(smpR, bqA_arr, biq_sR1, biq_sR2) / comps[1];
+            dryL = smpL = (outL * raWet) + (dryL * (1.0 - raWet));
+            dryR = smpR = (outR * raWet) + (dryR * (1.0 - raWet));
+        }
+        if (rbWet > 0.0) {
+            sineClip(smpL, cfs[2]); sineClip(smpR, cfs[2]);
+            double outL = applyBiquad(smpL, bqB_arr, biq_sL1, biq_sL2) / comps[2];
+            double outR = applyBiquad(smpR, bqB_arr, biq_sR1, biq_sR2) / comps[2];
+            dryL = smpL = (outL * rbWet) + (dryL * (1.0 - rbWet));
+            dryR = smpR = (outR * rbWet) + (dryR * (1.0 - rbWet));
+        }
+        if (rcWet > 0.0) {
+            sineClip(smpL, cfs[3]); sineClip(smpR, cfs[3]);
+            double outL = applyBiquad(smpL, bqC_arr, biq_sL1, biq_sL2) / comps[3];
+            double outR = applyBiquad(smpR, bqC_arr, biq_sR1, biq_sR2) / comps[3];
+            dryL = smpL = (outL * rcWet) + (dryL * (1.0 - rcWet));
+            dryR = smpR = (outR * rcWet) + (dryR * (1.0 - rcWet));
+        }
+        if (rdWet > 0.0) {
+            sineClip(smpL, cfs[4]); sineClip(smpR, cfs[4]);
+            double outL = applyBiquad(smpL, bqD_arr, biq_sL1, biq_sL2) / comps[4];
+            double outR = applyBiquad(smpR, bqD_arr, biq_sR1, biq_sR2) / comps[4];
+            dryL = smpL = (outL * rdWet) + (dryL * (1.0 - rdWet));
+            dryR = smpR = (outR * rdWet) + (dryR * (1.0 - rdWet));
+        }
+    };
+
+    // Standard processing lambda
+    auto processStandard = [&](double& smpL, double& smpR, double& dryL, double& dryR,
+                               double* bqA_arr, double* bqB_arr, double* bqC_arr, double* bqD_arr,
+                               double cf, bool useCF, double wetVal) {
+        double bWet = 1.0, cWet = 1.0, dWet = wetVal * 4.0;
+        if (dWet < 1.0)      { bWet = 0.0; cWet = 0.0; dWet = 0.0; }
+        else if (dWet < 2.0) { bWet = dWet - 1.0; cWet = 0.0; dWet = 0.0; }
+        else if (dWet < 3.0) { cWet = dWet - 2.0; dWet = 0.0; }
+        else                 { dWet -= 3.0; }
+
+        double outSmp;
+
+        // Stage A
+        if (useCF) { smpL /= cf; smpR /= cf; }
+        outSmp = (smpL * bqA_arr[biq_a0]) + bqA_arr[biq_sL1];
+        if (outSmp > 1.0) outSmp = 1.0; if (outSmp < -1.0) outSmp = -1.0;
+        bqA_arr[biq_sL1] = (smpL * bqA_arr[biq_a1]) - (outSmp * bqA_arr[biq_b1]) + bqA_arr[biq_sL2];
+        bqA_arr[biq_sL2] = (smpL * bqA_arr[biq_a2]) - (outSmp * bqA_arr[biq_b2]);
+        dryL = smpL = outSmp;
+
+        outSmp = (smpR * bqA_arr[biq_a0]) + bqA_arr[biq_sR1];
+        if (outSmp > 1.0) outSmp = 1.0; if (outSmp < -1.0) outSmp = -1.0;
+        bqA_arr[biq_sR1] = (smpR * bqA_arr[biq_a1]) - (outSmp * bqA_arr[biq_b1]) + bqA_arr[biq_sR2];
+        bqA_arr[biq_sR2] = (smpR * bqA_arr[biq_a2]) - (outSmp * bqA_arr[biq_b2]);
+        dryR = smpR = outSmp;
+
+        // Stage B
+        if (bWet > 0.0) {
+            if (useCF) { smpL /= cf; smpR /= cf; }
+            outSmp = (smpL * bqB_arr[biq_a0]) + bqB_arr[biq_sL1];
+            if (outSmp > 1.0) outSmp = 1.0; if (outSmp < -1.0) outSmp = -1.0;
+            bqB_arr[biq_sL1] = (smpL * bqB_arr[biq_a1]) - (outSmp * bqB_arr[biq_b1]) + bqB_arr[biq_sL2];
+            bqB_arr[biq_sL2] = (smpL * bqB_arr[biq_a2]) - (outSmp * bqB_arr[biq_b2]);
+            dryL = smpL = (outSmp * bWet) + (dryL * (1.0 - bWet));
+
+            outSmp = (smpR * bqB_arr[biq_a0]) + bqB_arr[biq_sR1];
+            if (outSmp > 1.0) outSmp = 1.0; if (outSmp < -1.0) outSmp = -1.0;
+            bqB_arr[biq_sR1] = (smpR * bqB_arr[biq_a1]) - (outSmp * bqB_arr[biq_b1]) + bqB_arr[biq_sR2];
+            bqB_arr[biq_sR2] = (smpR * bqB_arr[biq_a2]) - (outSmp * bqB_arr[biq_b2]);
+            dryR = smpR = (outSmp * bWet) + (dryR * (1.0 - bWet));
+        }
+
+        // Stage C
+        if (cWet > 0.0) {
+            if (useCF) { smpL /= cf; smpR /= cf; }
+            outSmp = (smpL * bqC_arr[biq_a0]) + bqC_arr[biq_sL1];
+            if (outSmp > 1.0) outSmp = 1.0; if (outSmp < -1.0) outSmp = -1.0;
+            bqC_arr[biq_sL1] = (smpL * bqC_arr[biq_a1]) - (outSmp * bqC_arr[biq_b1]) + bqC_arr[biq_sL2];
+            bqC_arr[biq_sL2] = (smpL * bqC_arr[biq_a2]) - (outSmp * bqC_arr[biq_b2]);
+            dryL = smpL = (outSmp * cWet) + (dryL * (1.0 - cWet));
+
+            outSmp = (smpR * bqC_arr[biq_a0]) + bqC_arr[biq_sR1];
+            if (outSmp > 1.0) outSmp = 1.0; if (outSmp < -1.0) outSmp = -1.0;
+            bqC_arr[biq_sR1] = (smpR * bqC_arr[biq_a1]) - (outSmp * bqC_arr[biq_b1]) + bqC_arr[biq_sR2];
+            bqC_arr[biq_sR2] = (smpR * bqC_arr[biq_a2]) - (outSmp * bqC_arr[biq_b2]);
+            dryR = smpR = (outSmp * cWet) + (dryR * (1.0 - cWet));
+        }
+
+        // Stage D
+        if (dWet > 0.0) {
+            if (useCF) { smpL /= cf; smpR /= cf; }
+            outSmp = (smpL * bqD_arr[biq_a0]) + bqD_arr[biq_sL1];
+            if (outSmp > 1.0) outSmp = 1.0; if (outSmp < -1.0) outSmp = -1.0;
+            bqD_arr[biq_sL1] = (smpL * bqD_arr[biq_a1]) - (outSmp * bqD_arr[biq_b1]) + bqD_arr[biq_sL2];
+            bqD_arr[biq_sL2] = (smpL * bqD_arr[biq_a2]) - (outSmp * bqD_arr[biq_b2]);
+            dryL = smpL = (outSmp * dWet) + (dryL * (1.0 - dWet));
+
+            outSmp = (smpR * bqD_arr[biq_a0]) + bqD_arr[biq_sR1];
+            if (outSmp > 1.0) outSmp = 1.0; if (outSmp < -1.0) outSmp = -1.0;
+            bqD_arr[biq_sR1] = (smpR * bqD_arr[biq_a1]) - (outSmp * bqD_arr[biq_b1]) + bqD_arr[biq_sR2];
+            bqD_arr[biq_sR2] = (smpR * bqD_arr[biq_a2]) - (outSmp * bqD_arr[biq_b2]);
+            dryR = smpR = (outSmp * dWet) + (dryR * (1.0 - dWet));
+        }
+
+        if (useCF) { smpL /= cf; smpR /= cf; }
+    };
+
+    // Opamp stage lambda
+    auto processOpamp = [&](double& smpL, double& smpR, double outTrimVal,
+                            double& iirL, double& iirR,
+                            double* fxA, double* fxB) {
+        double outSmp;
+
+        if (fabs(iirL) < 1.18e-37) iirL = 0.0;
+        iirL = (iirL * (1.0 - iirAmountA)) + (smpL * iirAmountA);
+        smpL -= iirL;
+        if (fabs(iirR) < 1.18e-37) iirR = 0.0;
+        iirR = (iirR * (1.0 - iirAmountA)) + (smpR * iirAmountA);
+        smpR -= iirR;
+
+        outSmp = (smpL * fxA[fix_a0]) + fxA[fix_sL1];
+        fxA[fix_sL1] = (smpL * fxA[fix_a1]) - (outSmp * fxA[fix_b1]) + fxA[fix_sL2];
+        fxA[fix_sL2] = (smpL * fxA[fix_a2]) - (outSmp * fxA[fix_b2]);
+        smpL = outSmp;
+        outSmp = (smpR * fxA[fix_a0]) + fxA[fix_sR1];
+        fxA[fix_sR1] = (smpR * fxA[fix_a1]) - (outSmp * fxA[fix_b1]) + fxA[fix_sR2];
+        fxA[fix_sR2] = (smpR * fxA[fix_a2]) - (outSmp * fxA[fix_b2]);
+        smpR = outSmp;
+
+        if (smpL > 1.0) smpL = 1.0; if (smpL < -1.0) smpL = -1.0;
+        smpL -= (smpL * smpL * smpL * smpL * smpL * 0.1768);
+        if (smpR > 1.0) smpR = 1.0; if (smpR < -1.0) smpR = -1.0;
+        smpR -= (smpR * smpR * smpR * smpR * smpR * 0.1768);
+
+        outSmp = (smpL * fxB[fix_a0]) + fxB[fix_sL1];
+        fxB[fix_sL1] = (smpL * fxB[fix_a1]) - (outSmp * fxB[fix_b1]) + fxB[fix_sL2];
+        fxB[fix_sL2] = (smpL * fxB[fix_a2]) - (outSmp * fxB[fix_b2]);
+        smpL = outSmp;
+        outSmp = (smpR * fxB[fix_a0]) + fxB[fix_sR1];
+        fxB[fix_sR1] = (smpR * fxB[fix_a1]) - (outSmp * fxB[fix_b1]) + fxB[fix_sR2];
+        fxB[fix_sR2] = (smpR * fxB[fix_a2]) - (outSmp * fxB[fix_b2]);
+        smpR = outSmp;
+
+        if (outTrimVal != 1.0) {
+            smpL *= outTrimVal;
+            smpR *= outTrimVal;
+        }
+    };
 
     // Get channel pointers
     float* channelL = buffer.getWritePointer(0);
@@ -230,28 +645,13 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
         double overallDrySampleL = inputSampleL;
         double overallDrySampleR = inputSampleR;
 
-        // Coefficient interpolation
+        // Per-block coefficient interpolation factor
         double interp = (double)(sampleFrames - 1 - i) / (double)inFramesToProcess;
-        biquadA[biq_a0] = (biquadA[biq_aA0] * interp) + (biquadA[biq_aB0] * (1.0 - interp));
-        biquadA[biq_a1] = (biquadA[biq_aA1] * interp) + (biquadA[biq_aB1] * (1.0 - interp));
-        biquadA[biq_a2] = (biquadA[biq_aA2] * interp) + (biquadA[biq_aB2] * (1.0 - interp));
-        biquadA[biq_b1] = (biquadA[biq_bA1] * interp) + (biquadA[biq_bB1] * (1.0 - interp));
-        biquadA[biq_b2] = (biquadA[biq_bA2] * interp) + (biquadA[biq_bB2] * (1.0 - interp));
-        for (int x = 0; x < 7; x++) { biquadD[x] = biquadC[x] = biquadB[x] = biquadA[x]; }
 
         double inTrim = (inTrimA * interp) + (inTrimB * (1.0 - interp));
         double outTrim = (outTrimA * interp) + (outTrimB * (1.0 - interp));
         double wet = (wetA * interp) + (wetB * (1.0 - interp));
-
-        // Four-stage progressive wet/dry
-        double aWet = 1.0;
-        double bWet = 1.0;
-        double cWet = 1.0;
-        double dWet = wet * 4.0;
-        if (dWet < 1.0)      { aWet = dWet; bWet = 0.0; cWet = 0.0; dWet = 0.0; }
-        else if (dWet < 2.0) { bWet = dWet - 1.0; cWet = 0.0; dWet = 0.0; }
-        else if (dWet < 3.0) { cWet = dWet - 2.0; dWet = 0.0; }
-        else                 { dWet -= 3.0; }
+        double morphAmount = (morphA * interp) + (morphB * (1.0 - interp));
 
         if (inTrim != 1.0) {
             inputSampleL *= inTrim;
@@ -266,107 +666,160 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
         inputSampleL *= trim;
         inputSampleR *= trim;
 
-        // Stage A
-        if (useClipFactor) { inputSampleL /= clipFactor; inputSampleR /= clipFactor; }
+        // LFO modulation
+        double lfoVal = sin(lfoPhase * 2.0 * juce::MathConstants<double>::pi);
+        lfoPhase += lfoPhaseInc;
+        if (lfoPhase >= 1.0) lfoPhase -= 1.0;
 
-        double outSample = (inputSampleL * biquadA[biq_a0]) + biquadA[biq_sL1];
-        if (outSample > 1.0) outSample = 1.0; if (outSample < -1.0) outSample = -1.0;
-        biquadA[biq_sL1] = (inputSampleL * biquadA[biq_a1]) - (outSample * biquadA[biq_b1]) + biquadA[biq_sL2];
-        biquadA[biq_sL2] = (inputSampleL * biquadA[biq_a2]) - (outSample * biquadA[biq_b2]);
-        drySampleL = inputSampleL = outSample;
+        bool lfoModCutoff = (lfoTarget == 0 || lfoTarget == 2); // Cutoff or Both
+        bool lfoModMorph  = (lfoTarget == 1 || lfoTarget == 2); // Morph or Both
 
-        outSample = (inputSampleR * biquadA[biq_a0]) + biquadA[biq_sR1];
-        if (outSample > 1.0) outSample = 1.0; if (outSample < -1.0) outSample = -1.0;
-        biquadA[biq_sR1] = (inputSampleR * biquadA[biq_a1]) - (outSample * biquadA[biq_b1]) + biquadA[biq_sR2];
-        biquadA[biq_sR2] = (inputSampleR * biquadA[biq_a2]) - (outSample * biquadA[biq_b2]);
-        drySampleR = inputSampleR = outSample;
-
-        // Stage B
-        if (bWet > 0.0) {
-            if (useClipFactor) { inputSampleL /= clipFactor; inputSampleR /= clipFactor; }
-            outSample = (inputSampleL * biquadB[biq_a0]) + biquadB[biq_sL1];
-            if (outSample > 1.0) outSample = 1.0; if (outSample < -1.0) outSample = -1.0;
-            biquadB[biq_sL1] = (inputSampleL * biquadB[biq_a1]) - (outSample * biquadB[biq_b1]) + biquadB[biq_sL2];
-            biquadB[biq_sL2] = (inputSampleL * biquadB[biq_a2]) - (outSample * biquadB[biq_b2]);
-            drySampleL = inputSampleL = (outSample * bWet) + (drySampleL * (1.0 - bWet));
-
-            outSample = (inputSampleR * biquadB[biq_a0]) + biquadB[biq_sR1];
-            if (outSample > 1.0) outSample = 1.0; if (outSample < -1.0) outSample = -1.0;
-            biquadB[biq_sR1] = (inputSampleR * biquadB[biq_a1]) - (outSample * biquadB[biq_b1]) + biquadB[biq_sR2];
-            biquadB[biq_sR2] = (inputSampleR * biquadB[biq_a2]) - (outSample * biquadB[biq_b2]);
-            drySampleR = inputSampleR = (outSample * bWet) + (drySampleR * (1.0 - bWet));
+        // Apply LFO to morph
+        double modulatedMorph = morphAmount;
+        if (lfoDepth > 0.0f && lfoModMorph && morphEnabled) {
+            modulatedMorph = morphAmount + lfoVal * (double)lfoDepth * 0.5;
+            modulatedMorph = juce::jlimit(0.0, 1.0, modulatedMorph);
         }
 
-        // Stage C
-        if (cWet > 0.0) {
-            if (useClipFactor) { inputSampleL /= clipFactor; inputSampleR /= clipFactor; }
-            outSample = (inputSampleL * biquadC[biq_a0]) + biquadC[biq_sL1];
-            if (outSample > 1.0) outSample = 1.0; if (outSample < -1.0) outSample = -1.0;
-            biquadC[biq_sL1] = (inputSampleL * biquadC[biq_a1]) - (outSample * biquadC[biq_b1]) + biquadC[biq_sL2];
-            biquadC[biq_sL2] = (inputSampleL * biquadC[biq_a2]) - (outSample * biquadC[biq_b2]);
-            drySampleL = inputSampleL = (outSample * cWet) + (drySampleL * (1.0 - cWet));
+        // Apply LFO to cutoff (for non-Region primary filter, when not in crossfade mode)
+        if (lfoDepth > 0.0f && lfoModCutoff && filterType != Region && !morphRegionCrossfade)
+        {
+            double modulatedB = (double)B + lfoVal * (double)lfoDepth * 0.5;
+            modulatedB = juce::jlimit(0.0, 1.0, modulatedB);
 
-            outSample = (inputSampleR * biquadC[biq_a0]) + biquadC[biq_sR1];
-            if (outSample > 1.0) outSample = 1.0; if (outSample < -1.0) outSample = -1.0;
-            biquadC[biq_sR1] = (inputSampleR * biquadC[biq_a1]) - (outSample * biquadC[biq_b1]) + biquadC[biq_sR2];
-            biquadC[biq_sR2] = (inputSampleR * biquadC[biq_a2]) - (outSample * biquadC[biq_b2]);
-            drySampleR = inputSampleR = (outSample * cWet) + (drySampleR * (1.0 - cWet));
+            // Recompute coefficients for filter A at modulated frequency
+            computePerSampleCoeffs(filterType, modulatedB, biquadA);
+
+            if (morphCoefficientBlend && filterTypeB != Region) {
+                // Also recompute filter B coefficients at modulated frequency
+                computePerSampleCoeffs(filterTypeB, modulatedB, biquadA2);
+            }
+
+            if (!morphCoefficientBlend) {
+                // Copy to cascade stages when not blending
+                for (int x = 0; x < 7; x++) { biquadD[x] = biquadC[x] = biquadB[x] = biquadA[x]; }
+            }
+        }
+        else if (lfoDepth <= 0.0f || !lfoModCutoff)
+        {
+            // No LFO cutoff modulation: use per-block interpolation for primary
+            if (filterType == Region) {
+                auto interpBQ = [interp](double* bq) {
+                    bq[biq_a0] = (bq[biq_aA0] * interp) + (bq[biq_aB0] * (1.0 - interp));
+                    bq[biq_a1] = (bq[biq_aA1] * interp) + (bq[biq_aB1] * (1.0 - interp));
+                    bq[biq_a2] = (bq[biq_aA2] * interp) + (bq[biq_aB2] * (1.0 - interp));
+                    bq[biq_b1] = (bq[biq_bA1] * interp) + (bq[biq_bB1] * (1.0 - interp));
+                    bq[biq_b2] = (bq[biq_bA2] * interp) + (bq[biq_bB2] * (1.0 - interp));
+                };
+                interpBQ(biquadE); interpBQ(biquadA); interpBQ(biquadB);
+                interpBQ(biquadC); interpBQ(biquadD);
+            } else {
+                biquadA[biq_a0] = (biquadA[biq_aA0] * interp) + (biquadA[biq_aB0] * (1.0 - interp));
+                biquadA[biq_a1] = (biquadA[biq_aA1] * interp) + (biquadA[biq_aB1] * (1.0 - interp));
+                biquadA[biq_a2] = (biquadA[biq_aA2] * interp) + (biquadA[biq_aB2] * (1.0 - interp));
+                biquadA[biq_b1] = (biquadA[biq_bA1] * interp) + (biquadA[biq_bB1] * (1.0 - interp));
+                biquadA[biq_b2] = (biquadA[biq_bA2] * interp) + (biquadA[biq_bB2] * (1.0 - interp));
+                for (int x = 0; x < 7; x++) { biquadD[x] = biquadC[x] = biquadB[x] = biquadA[x]; }
+            }
+
+            // Interpolate second set too
+            if (morphEnabled) {
+                if (filterTypeB == Region) {
+                    auto interpBQ2 = [interp](double* bq) {
+                        bq[biq_a0] = (bq[biq_aA0] * interp) + (bq[biq_aB0] * (1.0 - interp));
+                        bq[biq_a1] = (bq[biq_aA1] * interp) + (bq[biq_aB1] * (1.0 - interp));
+                        bq[biq_a2] = (bq[biq_aA2] * interp) + (bq[biq_aB2] * (1.0 - interp));
+                        bq[biq_b1] = (bq[biq_bA1] * interp) + (bq[biq_bB1] * (1.0 - interp));
+                        bq[biq_b2] = (bq[biq_bA2] * interp) + (bq[biq_bB2] * (1.0 - interp));
+                    };
+                    interpBQ2(biquadE2); interpBQ2(biquadA2); interpBQ2(biquadB2);
+                    interpBQ2(biquadC2); interpBQ2(biquadD2);
+                } else {
+                    biquadA2[biq_a0] = (biquadA2[biq_aA0] * interp) + (biquadA2[biq_aB0] * (1.0 - interp));
+                    biquadA2[biq_a1] = (biquadA2[biq_aA1] * interp) + (biquadA2[biq_aB1] * (1.0 - interp));
+                    biquadA2[biq_a2] = (biquadA2[biq_aA2] * interp) + (biquadA2[biq_aB2] * (1.0 - interp));
+                    biquadA2[biq_b1] = (biquadA2[biq_bA1] * interp) + (biquadA2[biq_bB1] * (1.0 - interp));
+                    biquadA2[biq_b2] = (biquadA2[biq_bA2] * interp) + (biquadA2[biq_bB2] * (1.0 - interp));
+                    for (int x = 0; x < 7; x++) { biquadD2[x] = biquadC2[x] = biquadB2[x] = biquadA2[x]; }
+                }
+            }
         }
 
-        // Stage D
-        if (dWet > 0.0) {
-            if (useClipFactor) { inputSampleL /= clipFactor; inputSampleR /= clipFactor; }
-            outSample = (inputSampleL * biquadD[biq_a0]) + biquadD[biq_sL1];
-            if (outSample > 1.0) outSample = 1.0; if (outSample < -1.0) outSample = -1.0;
-            biquadD[biq_sL1] = (inputSampleL * biquadD[biq_a1]) - (outSample * biquadD[biq_b1]) + biquadD[biq_sL2];
-            biquadD[biq_sL2] = (inputSampleL * biquadD[biq_a2]) - (outSample * biquadD[biq_b2]);
-            drySampleL = inputSampleL = (outSample * dWet) + (drySampleL * (1.0 - dWet));
+        // Compute first-stage wet for overall dry blend
+        double aWet = 1.0;
+        { double tmpWet = wet * 4.0; if (tmpWet < 1.0) aWet = tmpWet; }
 
-            outSample = (inputSampleR * biquadD[biq_a0]) + biquadD[biq_sR1];
-            if (outSample > 1.0) outSample = 1.0; if (outSample < -1.0) outSample = -1.0;
-            biquadD[biq_sR1] = (inputSampleR * biquadD[biq_a1]) - (outSample * biquadD[biq_b1]) + biquadD[biq_sR2];
-            biquadD[biq_sR2] = (inputSampleR * biquadD[biq_a2]) - (outSample * biquadD[biq_b2]);
-            drySampleR = inputSampleR = (outSample * dWet) + (drySampleR * (1.0 - dWet));
+        // === MORPH PROCESSING ===
+        if (morphRegionCrossfade && modulatedMorph > 0.0)
+        {
+            // Region crossfade mode: run both chains independently, crossfade outputs
+            double outAL = inputSampleL, outAR = inputSampleR;
+            double outBL = inputSampleL, outBR = inputSampleR;
+            double dryAL = outAL, dryAR = outAR;
+            double dryBL = outBL, dryBR = outBR;
+
+            // Process chain A
+            if (filterType == Region) {
+                processRegion(outAL, outAR, dryAL, dryAR,
+                    biquadA, biquadB, biquadC, biquadD, biquadE, (double)B, (double)D);
+            } else {
+                processStandard(outAL, outAR, dryAL, dryAR,
+                    biquadA, biquadB, biquadC, biquadD, clipFactorA, useClipA, wet);
+            }
+
+            // Process chain B
+            if (filterTypeB == Region) {
+                processRegion(outBL, outBR, dryBL, dryBR,
+                    biquadA2, biquadB2, biquadC2, biquadD2, biquadE2, (double)B, (double)D);
+            } else {
+                processStandard(outBL, outBR, dryBL, dryBR,
+                    biquadA2, biquadB2, biquadC2, biquadD2, clipFactorB, useClipB, wet);
+            }
+
+            // Crossfade
+            double m = modulatedMorph;
+            inputSampleL = outAL * (1.0 - m) + outBL * m;
+            inputSampleR = outAR * (1.0 - m) + outBR * m;
+        }
+        else if (morphCoefficientBlend && modulatedMorph > 0.0)
+        {
+            // Coefficient blend mode: interpolate working coefficients between A and B
+            double m = modulatedMorph;
+
+            // Blend coefficients
+            double blendA0 = biquadA[biq_a0] * (1.0 - m) + biquadA2[biq_a0] * m;
+            double blendA1 = biquadA[biq_a1] * (1.0 - m) + biquadA2[biq_a1] * m;
+            double blendA2c = biquadA[biq_a2] * (1.0 - m) + biquadA2[biq_a2] * m;
+            double blendB1 = biquadA[biq_b1] * (1.0 - m) + biquadA2[biq_b1] * m;
+            double blendB2 = biquadA[biq_b2] * (1.0 - m) + biquadA2[biq_b2] * m;
+
+            biquadA[biq_a0] = blendA0; biquadA[biq_a1] = blendA1;
+            biquadA[biq_a2] = blendA2c; biquadA[biq_b1] = blendB1;
+            biquadA[biq_b2] = blendB2;
+            for (int x = 0; x < 7; x++) { biquadD[x] = biquadC[x] = biquadB[x] = biquadA[x]; }
+
+            double blendClip = clipFactorA * (1.0 - m) + clipFactorB * m;
+            bool blendUseClip = useClipA || useClipB;
+
+            processStandard(inputSampleL, inputSampleR, drySampleL, drySampleR,
+                biquadA, biquadB, biquadC, biquadD, blendClip, blendUseClip, wet);
+        }
+        else if (filterType == Region)
+        {
+            // Pure Region (no morph or morph=0%)
+            processRegion(inputSampleL, inputSampleR, drySampleL, drySampleR,
+                biquadA, biquadB, biquadC, biquadD, biquadE, (double)B, (double)D);
+        }
+        else
+        {
+            // Pure standard (no morph or morph=0%)
+            processStandard(inputSampleL, inputSampleR, drySampleL, drySampleR,
+                biquadA, biquadB, biquadC, biquadD, clipFactorA, useClipA, wet);
         }
 
-        if (useClipFactor) { inputSampleL /= clipFactor; inputSampleR /= clipFactor; }
-
-        // Opamp stage
-        if (fabs(iirSampleAL) < 1.18e-37) iirSampleAL = 0.0;
-        iirSampleAL = (iirSampleAL * (1.0 - iirAmountA)) + (inputSampleL * iirAmountA);
-        inputSampleL -= iirSampleAL;
-        if (fabs(iirSampleAR) < 1.18e-37) iirSampleAR = 0.0;
-        iirSampleAR = (iirSampleAR * (1.0 - iirAmountA)) + (inputSampleR * iirAmountA);
-        inputSampleR -= iirSampleAR;
-
-        outSample = (inputSampleL * fixA[fix_a0]) + fixA[fix_sL1];
-        fixA[fix_sL1] = (inputSampleL * fixA[fix_a1]) - (outSample * fixA[fix_b1]) + fixA[fix_sL2];
-        fixA[fix_sL2] = (inputSampleL * fixA[fix_a2]) - (outSample * fixA[fix_b2]);
-        inputSampleL = outSample;
-        outSample = (inputSampleR * fixA[fix_a0]) + fixA[fix_sR1];
-        fixA[fix_sR1] = (inputSampleR * fixA[fix_a1]) - (outSample * fixA[fix_b1]) + fixA[fix_sR2];
-        fixA[fix_sR2] = (inputSampleR * fixA[fix_a2]) - (outSample * fixA[fix_b2]);
-        inputSampleR = outSample;
-
-        if (inputSampleL > 1.0) inputSampleL = 1.0; if (inputSampleL < -1.0) inputSampleL = -1.0;
-        inputSampleL -= (inputSampleL * inputSampleL * inputSampleL * inputSampleL * inputSampleL * 0.1768);
-        if (inputSampleR > 1.0) inputSampleR = 1.0; if (inputSampleR < -1.0) inputSampleR = -1.0;
-        inputSampleR -= (inputSampleR * inputSampleR * inputSampleR * inputSampleR * inputSampleR * 0.1768);
-
-        outSample = (inputSampleL * fixB[fix_a0]) + fixB[fix_sL1];
-        fixB[fix_sL1] = (inputSampleL * fixB[fix_a1]) - (outSample * fixB[fix_b1]) + fixB[fix_sL2];
-        fixB[fix_sL2] = (inputSampleL * fixB[fix_a2]) - (outSample * fixB[fix_b2]);
-        inputSampleL = outSample;
-        outSample = (inputSampleR * fixB[fix_a0]) + fixB[fix_sR1];
-        fixB[fix_sR1] = (inputSampleR * fixB[fix_a1]) - (outSample * fixB[fix_b1]) + fixB[fix_sR2];
-        fixB[fix_sR2] = (inputSampleR * fixB[fix_a2]) - (outSample * fixB[fix_b2]);
-        inputSampleR = outSample;
-
-        if (outTrim != 1.0) {
-            inputSampleL *= outTrim;
-            inputSampleR *= outTrim;
-        }
-        // End opamp stage
+        // Opamp stage (always uses primary opamp state)
+        processOpamp(inputSampleL, inputSampleR, outTrim,
+                     iirSampleAL, iirSampleAR, fixA, fixB);
 
         if (aWet != 1.0) {
             inputSampleL = (inputSampleL * aWet) + (overallDrySampleL * (1.0 - aWet));

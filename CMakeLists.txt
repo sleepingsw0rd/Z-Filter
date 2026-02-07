@@ -33,6 +33,7 @@ juce_add_plugin(ZFilter
 juce_add_binary_data(ZFilterData
     SOURCES
         GUI/GUI-NoControls-NoBigKnob.png
+        GUI/GUI-NoControls-NoBigKnob-1200.png
 )
 
 target_sources(ZFilter
