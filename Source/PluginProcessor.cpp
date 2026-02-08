@@ -208,8 +208,6 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
                 break;
             case Notch:
                 bqA[biq_freq] = ((pow(B_val, 3) * 4700.0) / sr) + 0.0009963;
-                outClipFactor = 0.91 - ((1.0 - B_val) * 0.15);
-                outUseClip = true;
                 bqA[biq_reso] = 0.618;
                 break;
             case Region:
