@@ -286,125 +286,126 @@ void DotMatrixLCD::paint(juce::Graphics& g)
 ZFilterEditor::ZFilterEditor(ZFilterProcessor& p)
     : AudioProcessorEditor(&p), processorRef(p)
 {
-    setSize(1200, 344);
+    setSize(1200, 450);
 
-    // Load background image (1200px wide version with logo)
-    backgroundImage = juce::ImageCache::getFromMemory(BinaryData::GUIWithLogo1200_png, BinaryData::GUIWithLogo1200_pngSize);
+    // Load background image (1200x450 version)
+    backgroundImage = juce::ImageCache::getFromMemory(
+        BinaryData::GUIWithLogo1200BigUI_png, BinaryData::GUIWithLogo1200BigUI_pngSize);
 
     // LCD
     addAndMakeVisible(lcd);
 
-    // Knobs
-    addAndMakeVisible(frequencyKnob);
-    addAndMakeVisible(resonanceKnob);
-    addAndMakeVisible(outputKnob);
-    addAndMakeVisible(mixKnob);
-    addAndMakeVisible(inputKnob);
-    addAndMakeVisible(lfoSpeedKnob);
-    addAndMakeVisible(lfoDepthKnob);
-    addAndMakeVisible(morphKnob);
+    // Helper to add components
+    auto addKnob = [this](KnobComponent& k) { addAndMakeVisible(k); };
+    auto addBtn  = [this](RoundButtonComponent& b) { addAndMakeVisible(b); };
+    auto addLED  = [this](LEDComponent& l) { addAndMakeVisible(l); };
 
-    // Buttons
-    auto addBtn = [this](RoundButtonComponent& btn) { addAndMakeVisible(btn); };
-    addBtn(bypassBtn);
-    addBtn(lpBtn);
-    addBtn(hpBtn);
-    addBtn(bpBtn);
-    addBtn(ntBtn);
-    addBtn(rgBtn);
-    addBtn(lfoSyncBtn);
-    addBtn(zOutBtn);
-    addBtn(morphEnableBtn);
-    addBtn(filterABtn);
-    addBtn(filterBBtn);
-    addBtn(lfoTargetBtn);
+    // Frequency knob
+    addKnob(frequencyKnob);
 
-    // LEDs
-    addAndMakeVisible(bypassLED);
-    addAndMakeVisible(lpLED);
-    addAndMakeVisible(hpLED);
-    addAndMakeVisible(bpLED);
-    addAndMakeVisible(ntLED);
-    addAndMakeVisible(rgLED);
-    addAndMakeVisible(lfoSyncLED);
-    addAndMakeVisible(zOutLED);
-    addAndMakeVisible(morphEnableLED);
-    addAndMakeVisible(filterALED);
-    addAndMakeVisible(filterBLED);
-    addAndMakeVisible(lfoTargetLED);
+    // Filter A row
+    addBtn(filterAEnableBtn); addLED(filterAEnableLED);
+    addBtn(lpABtn); addBtn(hpABtn); addBtn(bpABtn); addBtn(ntABtn); addBtn(rgABtn);
+    addLED(lpALED); addLED(hpALED); addLED(bpALED); addLED(ntALED); addLED(rgALED);
+    addKnob(polesAKnob);
 
-    // Button callbacks
-    bypassBtn.onClick = [this]() {
-        auto* param = processorRef.apvts.getParameter("bypass");
-        param->setValueNotifyingHost(param->getValue() < 0.5f ? 1.0f : 0.0f);
+    // Filter B row
+    addBtn(filterBEnableBtn); addLED(filterBEnableLED);
+    addBtn(lpBBtn); addBtn(hpBBtn); addBtn(bpBBtn); addBtn(ntBBtn); addBtn(rgBBtn);
+    addLED(lpBLED); addLED(hpBLED); addLED(bpBLED); addLED(ntBLED); addLED(rgBLED);
+    addKnob(polesBKnob);
+
+    // Routing
+    addBtn(routingBtn); addLED(routingLED);
+
+    // LFO A
+    addKnob(lfoASpeedKnob); addKnob(lfoADepthKnob);
+    addBtn(lfoASyncBtn); addLED(lfoASyncLED);
+
+    // LFO B
+    addKnob(lfoBSpeedKnob); addKnob(lfoBDepthKnob);
+    addBtn(lfoBSyncBtn); addLED(lfoBSyncLED);
+
+    // LFO Link
+    addBtn(lfoLinkBtn); addLED(lfoLinkLED);
+
+    // Morph
+    addBtn(morphEnableBtn); addLED(morphEnableLED);
+    addKnob(morphKnob);
+    addKnob(morphLfoSpeedKnob); addKnob(morphLfoDepthKnob);
+
+    // Master
+    addKnob(inputKnob); addKnob(outputKnob); addKnob(mixKnob);
+    addBtn(zOutBtn); addLED(zOutLED);
+    addBtn(bypassBtn); addLED(bypassLED);
+
+    // === Button callbacks ===
+
+    // Toggle helper
+    auto makeToggle = [this](const juce::String& paramId) {
+        return [this, paramId]() {
+            auto* param = processorRef.apvts.getParameter(paramId);
+            param->setValueNotifyingHost(param->getValue() < 0.5f ? 1.0f : 0.0f);
+        };
     };
 
-    auto setFilter = [this](int index) {
+    filterAEnableBtn.onClick = makeToggle("filterAEnabled");
+    filterBEnableBtn.onClick = makeToggle("filterBEnabled");
+    routingBtn.onClick       = makeToggle("routingMode");
+    lfoASyncBtn.onClick      = makeToggle("lfoASync");
+    lfoBSyncBtn.onClick      = makeToggle("lfoBSync");
+    lfoLinkBtn.onClick       = makeToggle("lfoLink");
+    morphEnableBtn.onClick   = makeToggle("morphEnabled");
+    zOutBtn.onClick          = makeToggle("zOutputStage");
+    bypassBtn.onClick        = makeToggle("bypass");
+
+    // Filter A type quick-set buttons
+    auto setFilterA = [this](int index) {
         processorRef.apvts.getParameter("filterTypeA")->setValueNotifyingHost((float)index / 4.0f);
     };
-    lpBtn.onClick = [setFilter]() { setFilter(0); };
-    hpBtn.onClick = [setFilter]() { setFilter(1); };
-    bpBtn.onClick = [setFilter]() { setFilter(2); };
-    ntBtn.onClick = [setFilter]() { setFilter(3); };
-    rgBtn.onClick = [setFilter]() { setFilter(4); };
+    lpABtn.onClick = [setFilterA]() { setFilterA(0); };
+    hpABtn.onClick = [setFilterA]() { setFilterA(1); };
+    bpABtn.onClick = [setFilterA]() { setFilterA(2); };
+    ntABtn.onClick = [setFilterA]() { setFilterA(3); };
+    rgABtn.onClick = [setFilterA]() { setFilterA(4); };
 
-    zOutBtn.onClick = [this]() {
-        auto* param = processorRef.apvts.getParameter("zOutputStage");
-        param->setValueNotifyingHost(param->getValue() < 0.5f ? 1.0f : 0.0f);
+    // Filter B type quick-set buttons
+    auto setFilterB = [this](int index) {
+        processorRef.apvts.getParameter("filterTypeB")->setValueNotifyingHost((float)index / 4.0f);
     };
+    lpBBtn.onClick = [setFilterB]() { setFilterB(0); };
+    hpBBtn.onClick = [setFilterB]() { setFilterB(1); };
+    bpBBtn.onClick = [setFilterB]() { setFilterB(2); };
+    ntBBtn.onClick = [setFilterB]() { setFilterB(3); };
+    rgBBtn.onClick = [setFilterB]() { setFilterB(4); };
 
-    lfoSyncBtn.onClick = [this]() {
-        auto* param = processorRef.apvts.getParameter("lfoSync");
-        param->setValueNotifyingHost(param->getValue() < 0.5f ? 1.0f : 0.0f);
-    };
-
-    // Morph enable toggle
-    morphEnableBtn.onClick = [this]() {
-        auto* param = processorRef.apvts.getParameter("morphEnabled");
-        param->setValueNotifyingHost(param->getValue() < 0.5f ? 1.0f : 0.0f);
-    };
-
-    // Filter A stepped selector (cycles through LP/HP/BP/NT/RG)
-    filterABtn.onClick = [this]() {
-        auto* param = processorRef.apvts.getParameter("filterTypeA");
-        int current = (int)(param->getValue() * 4.0f + 0.5f);
-        int next = (current + 1) % 5;
-        param->setValueNotifyingHost((float)next / 4.0f);
-    };
-
-    // Filter B stepped selector
-    filterBBtn.onClick = [this]() {
-        auto* param = processorRef.apvts.getParameter("filterTypeB");
-        int current = (int)(param->getValue() * 4.0f + 0.5f);
-        int next = (current + 1) % 5;
-        param->setValueNotifyingHost((float)next / 4.0f);
-    };
-
-    // LFO target 3-way toggle (Cutoff/Morph/Both)
-    lfoTargetBtn.onClick = [this]() {
-        auto* param = processorRef.apvts.getParameter("lfoTarget");
-        int current = (int)(param->getValue() * 2.0f + 0.5f);
-        int next = (current + 1) % 3;
-        param->setValueNotifyingHost((float)next / 2.0f);
-    };
-
-    // Parameter attachments
+    // === Parameter attachments ===
     frequencyAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         processorRef.apvts, "frequency", frequencyKnob);
-    resonanceAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        processorRef.apvts, "resonance", resonanceKnob);
+    polesAAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        processorRef.apvts, "polesA", polesAKnob);
+    polesBAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        processorRef.apvts, "polesB", polesBKnob);
+    lfoASpeedAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        processorRef.apvts, "lfoASpeed", lfoASpeedKnob);
+    lfoADepthAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        processorRef.apvts, "lfoADepth", lfoADepthKnob);
+    lfoBSpeedAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        processorRef.apvts, "lfoBSpeed", lfoBSpeedKnob);
+    lfoBDepthAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        processorRef.apvts, "lfoBDepth", lfoBDepthKnob);
+    morphAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        processorRef.apvts, "morph", morphKnob);
+    morphLfoSpeedAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        processorRef.apvts, "morphLfoSpeed", morphLfoSpeedKnob);
+    morphLfoDepthAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        processorRef.apvts, "morphLfoDepth", morphLfoDepthKnob);
+    inputAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        processorRef.apvts, "input", inputKnob);
     outputAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         processorRef.apvts, "output", outputKnob);
     mixAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         processorRef.apvts, "mix", mixKnob);
-    inputAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        processorRef.apvts, "input", inputKnob);
-    lfoSpeedAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        processorRef.apvts, "lfoSpeed", lfoSpeedKnob);
-    lfoDepthAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        processorRef.apvts, "lfoDepth", lfoDepthKnob);
-    morphAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        processorRef.apvts, "morph", morphKnob);
 
     updateDisplay();
     startTimerHz(15);
@@ -425,81 +426,99 @@ void ZFilterEditor::updateDisplay()
     // Read params
     int filterTypeA = (int)*processorRef.apvts.getRawParameterValue("filterTypeA");
     int filterTypeB = (int)*processorRef.apvts.getRawParameterValue("filterTypeB");
+    bool filterAOn = *processorRef.apvts.getRawParameterValue("filterAEnabled") > 0.5f;
+    bool filterBOn = *processorRef.apvts.getRawParameterValue("filterBEnabled") > 0.5f;
     bool morphOn = *processorRef.apvts.getRawParameterValue("morphEnabled") > 0.5f;
     float morph = *processorRef.apvts.getRawParameterValue("morph");
-    int lfoTgt = (int)*processorRef.apvts.getRawParameterValue("lfoTarget");
+    bool parallel = *processorRef.apvts.getRawParameterValue("routingMode") > 0.5f;
+    bool lfoLnk = *processorRef.apvts.getRawParameterValue("lfoLink") > 0.5f;
     float freq = *processorRef.apvts.getRawParameterValue("frequency");
-    float reso = *processorRef.apvts.getRawParameterValue("resonance");
+    float polesA = *processorRef.apvts.getRawParameterValue("polesA");
+    float polesB = *processorRef.apvts.getRawParameterValue("polesB");
     float output = *processorRef.apvts.getRawParameterValue("output");
     float mix = *processorRef.apvts.getRawParameterValue("mix");
     float input = *processorRef.apvts.getRawParameterValue("input");
     bool bypassed = *processorRef.apvts.getRawParameterValue("bypass") > 0.5f;
     bool zOut = *processorRef.apvts.getRawParameterValue("zOutputStage") > 0.5f;
-    float lfoSpd = *processorRef.apvts.getRawParameterValue("lfoSpeed");
-    float lfoDpt = *processorRef.apvts.getRawParameterValue("lfoDepth");
-    bool lfoSync = *processorRef.apvts.getRawParameterValue("lfoSync") > 0.5f;
+    bool lfoASync = *processorRef.apvts.getRawParameterValue("lfoASync") > 0.5f;
+    bool lfoBSync = *processorRef.apvts.getRawParameterValue("lfoBSync") > 0.5f;
 
-    // Filter type short names
     const char* typeShort[] = { "LP", "HP", "BP", "NT", "RG" };
     const char* typeNames[] = { "LOWPASS", "HIGHPASS", "BANDPASS", "NOTCH", "REGION" };
-    const char* tgtNames[] = { "CUT", "MRP", "C+M" };
+
+    juce::String tA = typeShort[juce::jlimit(0, 4, filterTypeA)];
+    juce::String tB = typeShort[juce::jlimit(0, 4, filterTypeB)];
 
     juce::String row0, row1, row2, row3;
 
+    // Row 0: Mode info
     if (morphOn) {
-        juce::String tA = (filterTypeA >= 0 && filterTypeA <= 4) ? typeShort[filterTypeA] : "LP";
-        juce::String tB = (filterTypeB >= 0 && filterTypeB <= 4) ? typeShort[filterTypeB] : "BP";
-        row0 = "Z-FILTER MORPH " + tA + ">" + tB + (zOut ? " ZOUT" : "");
-        row2 = "MORPH:" + juce::String(morph * 100.0f, 0) + "% RES:" + juce::String(reso * 100.0f, 0) + "%";
+        row0 = "Z-FILTER v2 MORPH " + tA + ">" + tB;
+    } else if (filterAOn && filterBOn) {
+        row0 = "Z-FILTER v2 " + tA + (parallel ? "||" : "->") + tB;
+    } else if (filterAOn) {
+        row0 = "Z-FILTER v2 A:" + juce::String(typeNames[juce::jlimit(0, 4, filterTypeA)]);
+    } else if (filterBOn) {
+        row0 = "Z-FILTER v2 B:" + juce::String(typeNames[juce::jlimit(0, 4, filterTypeB)]);
     } else {
-        juce::String typeName = (filterTypeA >= 0 && filterTypeA <= 4) ? typeNames[filterTypeA] : "LOWPASS";
-        row0 = "Z-FILTER " + typeName + (zOut ? " ZOUT" : "");
-        row2 = "IN:" + juce::String(input * 100.0f, 0) + "% RES:" + juce::String(reso * 100.0f, 0) + "%";
+        row0 = "Z-FILTER v2 [NO FILTER]";
+    }
+    if (zOut) row0 += " ZOUT";
+
+    // Row 1: Frequency
+    row1 = "FREQ: " + juce::String(freq * 100.0f, 1) + "%";
+
+    // Row 2: Poles + morph info
+    if (morphOn) {
+        row2 = "MORPH:" + juce::String(morph * 100.0f, 0) + "% PA:" +
+               juce::String(polesA * 100.0f, 0) + " PB:" + juce::String(polesB * 100.0f, 0);
+    } else {
+        row2 = "PA:" + juce::String(polesA * 100.0f, 0) + "% PB:" +
+               juce::String(polesB * 100.0f, 0) + "% IN:" + juce::String(input * 100.0f, 0) + "%";
     }
 
-    // Row 1: Frequency + LFO info
-    if (lfoDpt > 0.001f) {
-        juce::String lfoInfo;
-        if (lfoSync) {
-            static const char* divNames[] = {
-                "4/1","4/1D","4/1T","2/1","2/1D","2/1T",
-                "1/1","1/1D","1/1T","1/2","1/2D","1/2T",
-                "1/4","1/4D","1/4T","1/8","1/8D","1/8T",
-                "1/16","1/16D","1/16T","1/32","1/32D","1/32T",
-                "1/64","1/64D","1/64T"
-            };
-            int divIdx = juce::jlimit(0, 26, (int)(lfoSpd * 26.0f + 0.5f));
-            lfoInfo = divNames[divIdx];
-        } else {
-            double hz = 0.01 * pow(2000.0, (double)lfoSpd);
-            lfoInfo = juce::String(hz, 1) + "Hz";
-        }
-        juce::String tgt = tgtNames[juce::jlimit(0, 2, lfoTgt)];
-        row1 = "FRQ:" + juce::String(freq * 100.0f, 0) + "% LFO:" + lfoInfo + " " + tgt;
-    } else {
-        row1 = "FREQ: " + juce::String(freq * 100.0f, 1) + "%";
-    }
-
-    row3 = "LVL:" + juce::String(output * 100.0f, 0) + "% MIX:" + juce::String(mix * 100.0f, 0) + "%" + (bypassed ? " BYP" : "");
+    // Row 3: Level/mix/bypass
+    row3 = "LVL:" + juce::String(output * 100.0f, 0) + "% MIX:" +
+           juce::String(mix * 100.0f, 0) + "%" + (bypassed ? " BYP" : "") +
+           (lfoLnk ? " LNK" : "");
 
     lcd.setText(0, row0);
     lcd.setText(1, row1);
     lcd.setText(2, row2);
     lcd.setText(3, row3);
 
-    // LEDs
-    bypassLED.setActive(bypassed);
-    lpLED.setActive(filterTypeA == 0);
-    hpLED.setActive(filterTypeA == 1);
-    bpLED.setActive(filterTypeA == 2);
-    ntLED.setActive(filterTypeA == 3);
-    rgLED.setActive(filterTypeA == 4);
-    lfoSyncLED.setActive(lfoSync);
-    zOutLED.setActive(zOut);
+    // LEDs - Filter A type
+    lpALED.setActive(filterTypeA == 0);
+    hpALED.setActive(filterTypeA == 1);
+    bpALED.setActive(filterTypeA == 2);
+    ntALED.setActive(filterTypeA == 3);
+    rgALED.setActive(filterTypeA == 4);
+    filterAEnableLED.setActive(filterAOn);
+
+    // LEDs - Filter B type
+    lpBLED.setActive(filterTypeB == 0);
+    hpBLED.setActive(filterTypeB == 1);
+    bpBLED.setActive(filterTypeB == 2);
+    ntBLED.setActive(filterTypeB == 3);
+    rgBLED.setActive(filterTypeB == 4);
+    filterBEnableLED.setActive(filterBOn);
+
+    // LEDs - routing, LFO, morph, master
+    routingLED.setActive(parallel);
+    lfoASyncLED.setActive(lfoASync);
+    lfoBSyncLED.setActive(lfoBSync);
+    lfoLinkLED.setActive(lfoLnk);
     morphEnableLED.setActive(morphOn);
-    filterALED.setActive(morphOn);
-    filterBLED.setActive(morphOn);
-    lfoTargetLED.setActive(lfoTgt > 0);
+    zOutLED.setActive(zOut);
+    bypassLED.setActive(bypassed);
+
+    // LFO Link visual feedback: dim LFO B controls when linked
+    lfoBSpeedKnob.setEnabled(!lfoLnk);
+    lfoBDepthKnob.setEnabled(!lfoLnk);
+    lfoBSyncBtn.setEnabled(!lfoLnk);
+    lfoBSpeedKnob.setAlpha(lfoLnk ? 0.4f : 1.0f);
+    lfoBDepthKnob.setAlpha(lfoLnk ? 0.4f : 1.0f);
+    lfoBSyncBtn.setAlpha(lfoLnk ? 0.4f : 1.0f);
 
     repaint();
 }
@@ -512,108 +531,151 @@ void ZFilterEditor::paint(juce::Graphics& g)
     else
         g.fillAll(juce::Colour(0xff1a1a1a));
 
-    // Draw text labels for all controls
-    // Layout (19 controls) at 57px center-to-center spacing, starting at x=32
+    // Section labels
+    g.setColour(juce::Colour(0xffe0e0e0));
+    g.setFont(juce::Font(13.0f, juce::Font::bold));
+    g.drawText("[FILTERS]", 10, 232, 510, 18, juce::Justification::centred);
+    g.drawText("[LFO]",    490, 232, 190, 18, juce::Justification::centred);
+    g.drawText("[MORPH]",  730, 232, 150, 18, juce::Justification::centred);
+    g.drawText("[MASTER]", 890, 232, 300, 18, juce::Justification::centred);
+
+    // Control labels
+    g.setFont(juce::Font(10.0f));
     g.setColour(juce::Colour(0xffb0b0b0));
-    g.setFont(juce::Font(11.0f));
 
-    // Dynamic labels for Flt A, Flt B, and Tgt
-    const char* typeShort[] = { "LP", "HP", "BP", "NT", "RG" };
-    const char* tgtNames[] = { "CUT", "MRP", "C+M" };
-    int filterTypeA = (int)*processorRef.apvts.getRawParameterValue("filterTypeA");
-    int filterTypeB = (int)*processorRef.apvts.getRawParameterValue("filterTypeB");
-    int lfoTgt = (int)*processorRef.apvts.getRawParameterValue("lfoTarget");
+    const int rowALblY = 300;
+    const int rowBLblY = 370;
 
-    juce::String fltALabel = "A>" + juce::String(typeShort[juce::jlimit(0, 4, filterTypeA)]);
-    juce::String fltBLabel = "B>" + juce::String(typeShort[juce::jlimit(0, 4, filterTypeB)]);
-    juce::String tgtLabel = juce::String("Tgt>") + tgtNames[juce::jlimit(0, 2, lfoTgt)];
+    // Filter A row labels (+40px shift right)
+    g.drawText("On",    55, rowALblY, 36, 12, juce::Justification::centred);
+    g.drawText("LP",   100, rowALblY, 36, 12, juce::Justification::centred);
+    g.drawText("HP",   150, rowALblY, 36, 12, juce::Justification::centred);
+    g.drawText("BP",   200, rowALblY, 36, 12, juce::Justification::centred);
+    g.drawText("NT",   250, rowALblY, 36, 12, juce::Justification::centred);
+    g.drawText("RG",   300, rowALblY, 36, 12, juce::Justification::centred);
+    g.drawText("Poles", 353, rowALblY, 44, 12, juce::Justification::centred);
 
-    const int labelY = 253;
-    g.drawText("Bypass",   57, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("ZOut",    114, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Morph",   171, labelY, 50, 14, juce::Justification::centred);
-    g.drawText(fltALabel,  228, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Mrph",    285, labelY, 50, 14, juce::Justification::centred);
-    g.drawText(fltBLabel,  342, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("LP",      399, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("HP",      456, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("BP",      513, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("NT",      570, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("RG",      627, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Spd",     684, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Dpt",     741, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Sync",    798, labelY, 50, 14, juce::Justification::centred);
-    g.drawText(tgtLabel,   855, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Input",   912, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Poles",   969, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Level",  1026, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Mix",    1083, labelY, 50, 14, juce::Justification::centred);
+    // Routing label (moved to Filter A row, dynamic SER/PAR)
+    bool parallel = *processorRef.apvts.getRawParameterValue("routingMode") > 0.5f;
+    g.drawText(parallel ? "PAR" : "SER", 405, rowALblY, 36, 12, juce::Justification::centred);
+
+    // Filter B row labels (+40px shift right)
+    g.drawText("On",    55, rowBLblY, 36, 12, juce::Justification::centred);
+    g.drawText("LP",   100, rowBLblY, 36, 12, juce::Justification::centred);
+    g.drawText("HP",   150, rowBLblY, 36, 12, juce::Justification::centred);
+    g.drawText("BP",   200, rowBLblY, 36, 12, juce::Justification::centred);
+    g.drawText("NT",   250, rowBLblY, 36, 12, juce::Justification::centred);
+    g.drawText("RG",   300, rowBLblY, 36, 12, juce::Justification::centred);
+    g.drawText("Poles", 353, rowBLblY, 44, 12, juce::Justification::centred);
+
+    // Row labels (A / B) shifted right
+    g.setFont(juce::Font(12.0f, juce::Font::bold));
+    g.setColour(juce::Colour(0xffe0e0e0));
+    g.drawText("A", 38, 270, 14, 20, juce::Justification::centred);
+    g.drawText("B", 38, 340, 14, 20, juce::Justification::centred);
+
+    // LFO labels (shifted left)
+    g.setFont(juce::Font(10.0f));
+    g.setColour(juce::Colour(0xffb0b0b0));
+    g.drawText("Spd",  500, rowALblY, 34, 12, juce::Justification::centred);
+    g.drawText("Dpt",  545, rowALblY, 34, 12, juce::Justification::centred);
+    g.drawText("Sync", 590, rowALblY, 36, 12, juce::Justification::centred);
+    g.drawText("Link", 640, rowALblY, 36, 12, juce::Justification::centred);
+    g.drawText("Spd",  500, rowBLblY, 34, 12, juce::Justification::centred);
+    g.drawText("Dpt",  545, rowBLblY, 34, 12, juce::Justification::centred);
+    g.drawText("Sync", 590, rowBLblY, 36, 12, juce::Justification::centred);
+
+    // Morph labels
+    g.drawText("On",    745, rowALblY, 30, 12, juce::Justification::centred);
+    g.drawText("Mrph",  805, rowALblY, 40, 12, juce::Justification::centred);
+    g.drawText("MSpd",  745, rowBLblY, 40, 12, juce::Justification::centred);
+    g.drawText("MDpt",  805, rowBLblY, 40, 12, juce::Justification::centred);
+
+    // Master labels
+    // Button labels (row A)
+    g.drawText("ZOut",   935, rowALblY, 36, 12, juce::Justification::centred);
+    g.drawText("Byp",   1000, rowALblY, 36, 12, juce::Justification::centred);
+    // Knob labels (row B)
+    g.drawText("Input",  912, rowBLblY, 34, 12, juce::Justification::centred);
+    g.drawText("Level",  962, rowBLblY, 34, 12, juce::Justification::centred);
+    g.drawText("Mix",   1012, rowBLblY, 34, 12, juce::Justification::centred);
 }
 
 void ZFilterEditor::resized()
 {
-    // LCD display - shifted right to make room for logo
-    lcd.setBounds(270, 62, 520, 110);
+    // LCD display
+    lcd.setBounds(250, 62, 560, 110);
 
-    // Frequency knob (large) - aligned with knob recess in background
+    // Frequency knob (large)
     frequencyKnob.setBounds(990, 18, 188, 188);
 
-    // Control strip layout for 1200px width
-    // 19 controls at 57px center-to-center spacing, starting at center=82
-    // Centers: 82, 139, 196, 253, 310, 367, 424, 481, 538, 595, 652, 709, 766, 823, 880, 937, 994, 1051, 1108
-    const int ledY  = 241;
-    const int btnY  = 274;
-    const int knobY = 267;
+    // Layout constants
+    const int rowAY = 264;    // Row A: buttons/knobs Y
+    const int rowBY = 334;    // Row B: buttons/knobs Y
+    const int rowALedY = 252; // Row A: LED Y
+    const int rowBLedY = 322; // Row B: LED Y
+    const int bW = 36, bH = 22;   // Button size
+    const int kS = 34;             // Knob size
 
-    // Bypass (center=82)
-    bypassBtn.setBounds(62, btnY, 40, 24);
-    bypassLED.setBounds(77, ledY, 10, 10);
+    // === [FILTERS] section (x: 10-510) ===
+    // Filter A row (+40px shift right)
+    filterAEnableBtn.setBounds(55, rowAY, bW, bH);
+    filterAEnableLED.setBounds(68, rowALedY, 10, 10);
+    lpABtn.setBounds(100, rowAY, bW, bH);  lpALED.setBounds(113, rowALedY, 10, 10);
+    hpABtn.setBounds(150, rowAY, bW, bH);  hpALED.setBounds(163, rowALedY, 10, 10);
+    bpABtn.setBounds(200, rowAY, bW, bH);  bpALED.setBounds(213, rowALedY, 10, 10);
+    ntABtn.setBounds(250, rowAY, bW, bH);  ntALED.setBounds(263, rowALedY, 10, 10);
+    rgABtn.setBounds(300, rowAY, bW, bH);  rgALED.setBounds(313, rowALedY, 10, 10);
+    polesAKnob.setBounds(358, rowAY, kS, kS);
+    // Routing button at end of Filter A row
+    routingBtn.setBounds(405, rowAY, bW, bH);
+    routingLED.setBounds(418, rowALedY, 10, 10);
 
-    // ZOut (center=139)
-    zOutBtn.setBounds(119, btnY, 40, 24);
-    zOutLED.setBounds(134, ledY, 10, 10);
+    // Filter B row (+40px shift right)
+    filterBEnableBtn.setBounds(55, rowBY, bW, bH);
+    filterBEnableLED.setBounds(68, rowBLedY, 10, 10);
+    lpBBtn.setBounds(100, rowBY, bW, bH);  lpBLED.setBounds(113, rowBLedY, 10, 10);
+    hpBBtn.setBounds(150, rowBY, bW, bH);  hpBLED.setBounds(163, rowBLedY, 10, 10);
+    bpBBtn.setBounds(200, rowBY, bW, bH);  bpBLED.setBounds(213, rowBLedY, 10, 10);
+    ntBBtn.setBounds(250, rowBY, bW, bH);  ntBLED.setBounds(263, rowBLedY, 10, 10);
+    rgBBtn.setBounds(300, rowBY, bW, bH);  rgBLED.setBounds(313, rowBLedY, 10, 10);
+    polesBKnob.setBounds(358, rowBY, kS, kS);
 
-    // Morph Enable (center=196)
-    morphEnableBtn.setBounds(176, btnY, 40, 24);
-    morphEnableLED.setBounds(191, ledY, 10, 10);
+    // === [LFO] section (shifted left ~30px) ===
+    // LFO A row
+    lfoASpeedKnob.setBounds(500, rowAY, kS, kS);
+    lfoADepthKnob.setBounds(545, rowAY, kS, kS);
+    lfoASyncBtn.setBounds(590, rowAY, bW, bH);
+    lfoASyncLED.setBounds(603, rowALedY, 10, 10);
+    // LFO Link button at end of LFO A row
+    lfoLinkBtn.setBounds(640, rowAY, bW, bH);
+    lfoLinkLED.setBounds(653, rowALedY, 10, 10);
 
-    // Filter A stepped selector (center=253)
-    filterABtn.setBounds(233, btnY, 40, 24);
-    filterALED.setBounds(248, ledY, 10, 10);
+    // LFO B row
+    lfoBSpeedKnob.setBounds(500, rowBY, kS, kS);
+    lfoBDepthKnob.setBounds(545, rowBY, kS, kS);
+    lfoBSyncBtn.setBounds(590, rowBY, bW, bH);
+    lfoBSyncLED.setBounds(603, rowBLedY, 10, 10);
 
-    // Morph knob (center=310)
-    morphKnob.setBounds(291, knobY, 38, 38);
+    // === [MORPH] section (x: 730-880) ===
+    // Row 1: Enable + Morph knob
+    morphEnableBtn.setBounds(745, rowAY, bW, bH);
+    morphEnableLED.setBounds(758, rowALedY, 10, 10);
+    morphKnob.setBounds(805, rowAY, kS, kS);
 
-    // Filter B stepped selector (center=367)
-    filterBBtn.setBounds(347, btnY, 40, 24);
-    filterBLED.setBounds(362, ledY, 10, 10);
+    // Row 2: Morph LFO speed + depth
+    morphLfoSpeedKnob.setBounds(745, rowBY, kS, kS);
+    morphLfoDepthKnob.setBounds(805, rowBY, kS, kS);
 
-    // Filter type buttons (LP/HP/BP/NT/RG) - quick-set for Filter A
-    lpBtn.setBounds(404, btnY, 40, 24);
-    hpBtn.setBounds(461, btnY, 40, 24);
-    bpBtn.setBounds(518, btnY, 40, 24);
-    ntBtn.setBounds(575, btnY, 40, 24);
-    rgBtn.setBounds(632, btnY, 40, 24);
+    // === [MASTER] section (x: 890-1190) ===
+    // Row A (upper): ZOut and Bypass buttons
+    zOutBtn.setBounds(935, rowAY, bW, bH);
+    zOutLED.setBounds(948, rowALedY, 10, 10);
+    bypassBtn.setBounds(1000, rowAY, bW, bH);
+    bypassLED.setBounds(1013, rowALedY, 10, 10);
 
-    lpLED.setBounds(419, ledY, 10, 10);
-    hpLED.setBounds(476, ledY, 10, 10);
-    bpLED.setBounds(533, ledY, 10, 10);
-    ntLED.setBounds(590, ledY, 10, 10);
-    rgLED.setBounds(647, ledY, 10, 10);
-
-    // LFO controls
-    lfoSpeedKnob.setBounds(690, knobY, 38, 38);
-    lfoDepthKnob.setBounds(747, knobY, 38, 38);
-    lfoSyncBtn.setBounds(803, btnY, 40, 24);
-    lfoSyncLED.setBounds(818, ledY, 10, 10);
-
-    // LFO Target (center=880)
-    lfoTargetBtn.setBounds(860, btnY, 40, 24);
-    lfoTargetLED.setBounds(875, ledY, 10, 10);
-
-    // Parameter knobs
-    inputKnob.setBounds(918, knobY, 38, 38);
-    resonanceKnob.setBounds(975, knobY, 38, 38);
-    outputKnob.setBounds(1032, knobY, 38, 38);
-    mixKnob.setBounds(1089, knobY, 38, 38);
+    // Row B (lower): Input, Level, Mix knobs
+    inputKnob.setBounds(912, rowBY, kS, kS);
+    outputKnob.setBounds(962, rowBY, kS, kS);
+    mixKnob.setBounds(1012, rowBY, kS, kS);
 }

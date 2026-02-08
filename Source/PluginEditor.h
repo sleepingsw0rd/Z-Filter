@@ -197,7 +197,7 @@ public:
 
 private:
     static constexpr int kRows = 4;
-    static constexpr int kCols = 24;
+    static constexpr int kCols = 29;
     static constexpr int kCharW = 5;
     static constexpr int kCharH = 7;
 
@@ -234,55 +234,73 @@ private:
     // LCD
     DotMatrixLCD lcd;
 
-    // Knobs
+    // Frequency knob (large)
     KnobComponent frequencyKnob { KnobComponent::Large };
-    KnobComponent resonanceKnob { KnobComponent::Small };
-    KnobComponent outputKnob    { KnobComponent::Small };
-    KnobComponent mixKnob       { KnobComponent::Small };
-    KnobComponent inputKnob     { KnobComponent::Small };
-    KnobComponent lfoSpeedKnob  { KnobComponent::Small };
-    KnobComponent lfoDepthKnob  { KnobComponent::Small };
 
-    // Buttons
-    RoundButtonComponent bypassBtn;
-    RoundButtonComponent lpBtn;
-    RoundButtonComponent hpBtn;
-    RoundButtonComponent bpBtn;
-    RoundButtonComponent ntBtn;
-    RoundButtonComponent rgBtn;
-    RoundButtonComponent lfoSyncBtn;
-    RoundButtonComponent zOutBtn;
+    // Filter A row
+    RoundButtonComponent filterAEnableBtn;
+    LEDComponent filterAEnableLED;
+    RoundButtonComponent lpABtn, hpABtn, bpABtn, ntABtn, rgABtn;
+    LEDComponent lpALED, hpALED, bpALED, ntALED, rgALED;
+    KnobComponent polesAKnob { KnobComponent::Small };
 
-    // Morph controls
+    // Filter B row
+    RoundButtonComponent filterBEnableBtn;
+    LEDComponent filterBEnableLED;
+    RoundButtonComponent lpBBtn, hpBBtn, bpBBtn, ntBBtn, rgBBtn;
+    LEDComponent lpBLED, hpBLED, bpBLED, ntBLED, rgBLED;
+    KnobComponent polesBKnob { KnobComponent::Small };
+
+    // Routing
+    RoundButtonComponent routingBtn;
+    LEDComponent routingLED;
+
+    // LFO A
+    KnobComponent lfoASpeedKnob { KnobComponent::Small };
+    KnobComponent lfoADepthKnob { KnobComponent::Small };
+    RoundButtonComponent lfoASyncBtn;
+    LEDComponent lfoASyncLED;
+
+    // LFO B
+    KnobComponent lfoBSpeedKnob { KnobComponent::Small };
+    KnobComponent lfoBDepthKnob { KnobComponent::Small };
+    RoundButtonComponent lfoBSyncBtn;
+    LEDComponent lfoBSyncLED;
+
+    // LFO Link
+    RoundButtonComponent lfoLinkBtn;
+    LEDComponent lfoLinkLED;
+
+    // Morph section
     RoundButtonComponent morphEnableBtn;
-    RoundButtonComponent filterABtn;
-    RoundButtonComponent filterBBtn;
-    KnobComponent morphKnob { KnobComponent::Small };
-    RoundButtonComponent lfoTargetBtn;
-
-    // LEDs
-    LEDComponent bypassLED;
-    LEDComponent lpLED;
-    LEDComponent hpLED;
-    LEDComponent bpLED;
-    LEDComponent ntLED;
-    LEDComponent rgLED;
-    LEDComponent lfoSyncLED;
-    LEDComponent zOutLED;
     LEDComponent morphEnableLED;
-    LEDComponent filterALED;
-    LEDComponent filterBLED;
-    LEDComponent lfoTargetLED;
+    KnobComponent morphKnob { KnobComponent::Small };
+    KnobComponent morphLfoSpeedKnob { KnobComponent::Small };
+    KnobComponent morphLfoDepthKnob { KnobComponent::Small };
+
+    // Master section
+    KnobComponent inputKnob  { KnobComponent::Small };
+    KnobComponent outputKnob { KnobComponent::Small };
+    KnobComponent mixKnob    { KnobComponent::Small };
+    RoundButtonComponent zOutBtn;
+    LEDComponent zOutLED;
+    RoundButtonComponent bypassBtn;
+    LEDComponent bypassLED;
 
     // Parameter attachments
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> frequencyAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> resonanceAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> polesAAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> polesBAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> lfoASpeedAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> lfoADepthAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> lfoBSpeedAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> lfoBDepthAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> morphAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> morphLfoSpeedAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> morphLfoDepthAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> inputAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> outputAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> inputAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> lfoSpeedAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> lfoDepthAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> morphAttachment;
 
     void updateDisplay();
 

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(ZFilter VERSION 1.0.0 LANGUAGES CXX)
+project(ZFilter VERSION 2.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,7 +27,7 @@ juce_add_plugin(ZFilter
     PLUGIN_MANUFACTURER_CODE ZFlt
     PLUGIN_CODE              ZFl1
     FORMATS                  VST3 Standalone
-    PRODUCT_NAME             "Z-Filter"
+    PRODUCT_NAME             "Z-FilterXL"
 )
 
 juce_add_binary_data(ZFilterData
@@ -35,6 +35,7 @@ juce_add_binary_data(ZFilterData
         GUI/GUI-NoControls-NoBigKnob.png
         GUI/GUI-NoControls-NoBigKnob-1200.png
         GUI/GUI-WithLogo1200.png
+        GUI/GUI-WithLogo1200-BigUI.png
 )
 
 target_sources(ZFilter

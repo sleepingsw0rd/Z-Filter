@@ -109,7 +109,13 @@ private:
     double morphA = 0.0, morphB = 0.0;
 
     // LFO state
-    double lfoPhase = 0.0;
+    double lfoPhaseA = 0.0;
+    double lfoPhaseB = 0.0;
+    double morphLfoPhase = 0.0;
+
+    // Per-filter poles smoothing
+    double polesASmooth_A = 0.0, polesASmooth_B = 0.0;
+    double polesBSmooth_A = 0.0, polesBSmooth_B = 0.0;
 
     // Dither state
     uint32_t fpdL = 1, fpdR = 1;
