@@ -545,7 +545,7 @@ void ZFilterEditor::paint(juce::Graphics& g)
     g.drawText("Sync",    798, labelY, 50, 14, juce::Justification::centred);
     g.drawText(tgtLabel,   855, labelY, 50, 14, juce::Justification::centred);
     g.drawText("Input",   912, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Res",     969, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Poles",   969, labelY, 50, 14, juce::Justification::centred);
     g.drawText("Level",  1026, labelY, 50, 14, juce::Justification::centred);
     g.drawText("Mix",    1083, labelY, 50, 14, juce::Justification::centred);
 }
