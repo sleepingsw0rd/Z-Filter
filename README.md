@@ -10,10 +10,12 @@ A multi-mode morphing biquad filter audio plugin built with JUCE, based on the A
 |---------|-------------|----------|
 | **Z-Filter** | Single filter, single LFO, compact UI | **[Z-Filter.vst3 (Win x64)](https://github.com/sleepingsw0rd/Z-Filter/raw/main/Releases/Z-Filter.vst3/Contents/x86_64-win/Z-Filter.vst3)** |
 | **Z-Filter XL** | Dual filter, dual LFO, morph with LFO, expanded UI | **[Z-FilterXL.vst3 (Win x64)](https://github.com/sleepingsw0rd/Z-Filter/raw/v2-xl/Releases/Z-FilterXL.vst3/Contents/x86_64-win/Z-FilterXL.vst3)** |
+| **Z-Filter Mini** | Single filter, no LFO, minimal UI | **[Z-FilterMini.vst3 (Win x64)](https://github.com/sleepingsw0rd/Z-Filter/raw/mini/Releases/Z-FilterMini.vst3/Contents/x86_64-win/Z-FilterMini.vst3)** |
 
-Drop into your VST3 folder (typically `C:\Program Files\Common Files\VST3\`) and scan in your DAW. Both versions can run side-by-side.
+Drop into your VST3 folder (typically `C:\Program Files\Common Files\VST3\`) and scan in your DAW. All three versions can run side-by-side.
 
 See the [Z-Filter XL documentation](https://github.com/sleepingsw0rd/Z-Filter/tree/v2-xl#readme) for full XL features, controls, and screenshots.
+See the [Z-Filter Mini documentation](https://github.com/sleepingsw0rd/Z-Filter/tree/mini#readme) for the streamlined Mini version.
 
 ## Features
 
