@@ -6,7 +6,12 @@ A multi-mode morphing biquad filter audio plugin built with JUCE, based on the A
 
 ## Download
 
-**[Z-Filter.vst3 (Windows x64)](https://github.com/sleepingsw0rd/Z-Filter/raw/main/Releases/Z-Filter.vst3/Contents/x86_64-win/Z-Filter.vst3)** — Drop into your VST3 folder (typically `C:\Program Files\Common Files\VST3\`) and scan in your DAW.
+| Version | Description | Download |
+|---------|-------------|----------|
+| **Z-Filter** | Single filter, single LFO, compact UI | **[Z-Filter.vst3 (Win x64)](https://github.com/sleepingsw0rd/Z-Filter/raw/main/Releases/Z-Filter.vst3/Contents/x86_64-win/Z-Filter.vst3)** |
+| **Z-Filter XL** | Dual filter, dual LFO, morph with LFO, expanded UI | **[Z-FilterXL.vst3 (Win x64)](https://github.com/sleepingsw0rd/Z-Filter/raw/v2-xl/Releases/Z-FilterXL.vst3/Contents/x86_64-win/Z-FilterXL.vst3)** |
+
+Drop into your VST3 folder (typically `C:\Program Files\Common Files\VST3\`) and scan in your DAW. Both versions can run side-by-side.
 
 ## Features
 
