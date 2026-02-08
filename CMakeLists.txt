@@ -25,7 +25,7 @@ juce_add_plugin(ZFilter
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     COPY_PLUGIN_AFTER_BUILD FALSE
     PLUGIN_MANUFACTURER_CODE ZFlt
-    PLUGIN_CODE              ZFl1
+    PLUGIN_CODE              ZFl2
     FORMATS                  VST3 Standalone
     PRODUCT_NAME             "Z-FilterXL"
 )
