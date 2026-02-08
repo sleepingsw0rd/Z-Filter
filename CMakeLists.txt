@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(ZFilter VERSION 1.0.0 LANGUAGES CXX)
+project(ZFilterMini VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -16,7 +16,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(JUCE)
 
 # Define the plugin target
-juce_add_plugin(ZFilter
+juce_add_plugin(ZFilterMini
     COMPANY_NAME           "SleepingSword"
     IS_SYNTH               FALSE
     NEEDS_MIDI_INPUT        FALSE
@@ -25,25 +25,23 @@ juce_add_plugin(ZFilter
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     COPY_PLUGIN_AFTER_BUILD FALSE
     PLUGIN_MANUFACTURER_CODE ZFlt
-    PLUGIN_CODE              ZFl1
+    PLUGIN_CODE              ZFlM
     FORMATS                  VST3 Standalone
-    PRODUCT_NAME             "Z-Filter"
+    PRODUCT_NAME             "Z-FilterMini"
 )
 
-juce_add_binary_data(ZFilterData
+juce_add_binary_data(ZFilterMiniData
     SOURCES
-        GUI/GUI-NoControls-NoBigKnob.png
-        GUI/GUI-NoControls-NoBigKnob-1200.png
-        GUI/GUI-WithLogo1200.png
+        GUI/GUI-mini.png
 )
 
-target_sources(ZFilter
+target_sources(ZFilterMini
     PRIVATE
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
 )
 
-target_compile_definitions(ZFilter
+target_compile_definitions(ZFilterMini
     PUBLIC
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
@@ -51,9 +49,9 @@ target_compile_definitions(ZFilter
         JUCE_DISPLAY_SPLASH_SCREEN=0
 )
 
-target_link_libraries(ZFilter
+target_link_libraries(ZFilterMini
     PRIVATE
-        ZFilterData
+        ZFilterMiniData
         juce::juce_audio_utils
         juce::juce_dsp
     PUBLIC

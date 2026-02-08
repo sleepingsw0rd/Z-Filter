@@ -3,54 +3,38 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 
-//==============================================================================
-// Z-Filter: Combined Airwindows filter plugin
-// Based on ZBandpass2, ZNotch2, ZLowpass2, ZHighpass2 by Chris Johnson (Airwindows)
-// Original code: MIT License
-//==============================================================================
-
-class ZFilterProcessor : public juce::AudioProcessor
+class ZFilterMiniProcessor : public juce::AudioProcessor
 {
 public:
-    //==============================================================================
-    ZFilterProcessor();
-    ~ZFilterProcessor() override;
+    ZFilterMiniProcessor();
+    ~ZFilterMiniProcessor() override;
 
-    //==============================================================================
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
-
     bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
-
     void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
-    //==============================================================================
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override;
 
-    //==============================================================================
     const juce::String getName() const override;
-
     bool acceptsMidi() const override;
     bool producesMidi() const override;
     bool isMidiEffect() const override;
     double getTailLengthSeconds() const override;
 
-    //==============================================================================
     int getNumPrograms() override;
     int getCurrentProgram() override;
     void setCurrentProgram(int index) override;
     const juce::String getProgramName(int index) override;
     void changeProgramName(int index, const juce::String& newName) override;
 
-    //==============================================================================
     void getStateInformation(juce::MemoryBlock& destData) override;
     void setStateInformation(const void* data, int sizeInBytes) override;
 
-    //==============================================================================
     juce::AudioProcessorValueTreeState apvts;
 
-    enum FilterType { Lowpass = 0, Highpass, Bandpass, Notch, Region };
+    enum FilterType { Lowpass = 0, Highpass, Bandpass, Notch };
 
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -71,33 +55,19 @@ private:
         fix_total
     };
 
-    // Filter state arrays (Filter A / primary)
+    // Filter state arrays (single chain, 4 cascaded stages)
     double biquadA[biq_total] = {};
     double biquadB[biq_total] = {};
     double biquadC[biq_total] = {};
     double biquadD[biq_total] = {};
-    double biquadE[biq_total] = {};
-
-    // Second filter (B) biquad arrays for morphing
-    double biquadA2[biq_total] = {};
-    double biquadB2[biq_total] = {};
-    double biquadC2[biq_total] = {};
-    double biquadD2[biq_total] = {};
-    double biquadE2[biq_total] = {};
 
     // Opamp stage state
     double fixA[fix_total] = {};
     double fixB[fix_total] = {};
 
-    // Second opamp/IIR state for Region crossfade
-    double fixA2[fix_total] = {};
-    double fixB2[fix_total] = {};
-
-    // IIR state
+    // IIR DC blocking state
     double iirSampleAL = 0.0;
     double iirSampleAR = 0.0;
-    double iirSampleBL = 0.0;
-    double iirSampleBR = 0.0;
 
     // Smoothing state
     double inTrimA = 0.0, inTrimB = 0.0;
@@ -105,14 +75,8 @@ private:
     double wetA = 0.0, wetB = 0.0;
     double mixA = 0.0, mixB = 0.0;
 
-    // Morph smoothing state
-    double morphA = 0.0, morphB = 0.0;
-
-    // LFO state
-    double lfoPhase = 0.0;
-
     // Dither state
     uint32_t fpdL = 1, fpdR = 1;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ZFilterProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ZFilterMiniProcessor)
 };

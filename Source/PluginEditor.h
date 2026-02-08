@@ -185,7 +185,7 @@ private:
 };
 
 //==============================================================================
-// Dot-matrix LCD display (HD44780 style)
+// Dot-matrix LCD display (HD44780 style) - Mini version: 4 rows x 8 cols
 //==============================================================================
 class DotMatrixLCD : public juce::Component
 {
@@ -197,14 +197,13 @@ public:
 
 private:
     static constexpr int kRows = 4;
-    static constexpr int kCols = 24;
+    static constexpr int kCols = 16;
     static constexpr int kCharW = 5;
     static constexpr int kCharH = 7;
 
     juce::String rows[kRows];
     bool dirty = true;
 
-    // 5x7 font data for ASCII 32-127
     static const uint8_t font5x7[];
     void drawChar(juce::Graphics& g, char ch, float x, float y, float dotSize, float dotPitch) const;
 
@@ -214,12 +213,12 @@ private:
 //==============================================================================
 // Main editor
 //==============================================================================
-class ZFilterEditor : public juce::AudioProcessorEditor,
-                      private juce::Timer
+class ZFilterMiniEditor : public juce::AudioProcessorEditor,
+                          private juce::Timer
 {
 public:
-    explicit ZFilterEditor(ZFilterProcessor&);
-    ~ZFilterEditor() override;
+    explicit ZFilterMiniEditor(ZFilterMiniProcessor&);
+    ~ZFilterMiniEditor() override;
 
     void paint(juce::Graphics&) override;
     void resized() override;
@@ -227,7 +226,7 @@ public:
 private:
     void timerCallback() override;
 
-    ZFilterProcessor& processorRef;
+    ZFilterMiniProcessor& processorRef;
 
     juce::Image backgroundImage;
 
@@ -236,55 +235,31 @@ private:
 
     // Knobs
     KnobComponent frequencyKnob { KnobComponent::Large };
-    KnobComponent resonanceKnob { KnobComponent::Small };
+    KnobComponent polesKnob     { KnobComponent::Small };
     KnobComponent outputKnob    { KnobComponent::Small };
+    KnobComponent inputKnob      { KnobComponent::Small };
     KnobComponent mixKnob       { KnobComponent::Small };
-    KnobComponent inputKnob     { KnobComponent::Small };
-    KnobComponent lfoSpeedKnob  { KnobComponent::Small };
-    KnobComponent lfoDepthKnob  { KnobComponent::Small };
 
-    // Buttons
-    RoundButtonComponent bypassBtn;
+    // Filter type buttons
     RoundButtonComponent lpBtn;
     RoundButtonComponent hpBtn;
     RoundButtonComponent bpBtn;
     RoundButtonComponent ntBtn;
-    RoundButtonComponent rgBtn;
-    RoundButtonComponent lfoSyncBtn;
-    RoundButtonComponent zOutBtn;
-
-    // Morph controls
-    RoundButtonComponent morphEnableBtn;
-    RoundButtonComponent filterABtn;
-    RoundButtonComponent filterBBtn;
-    KnobComponent morphKnob { KnobComponent::Small };
-    RoundButtonComponent lfoTargetBtn;
 
     // LEDs
-    LEDComponent bypassLED;
     LEDComponent lpLED;
     LEDComponent hpLED;
     LEDComponent bpLED;
     LEDComponent ntLED;
-    LEDComponent rgLED;
-    LEDComponent lfoSyncLED;
-    LEDComponent zOutLED;
-    LEDComponent morphEnableLED;
-    LEDComponent filterALED;
-    LEDComponent filterBLED;
-    LEDComponent lfoTargetLED;
 
     // Parameter attachments
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> frequencyAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> resonanceAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> polesAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> outputAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> inputAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> lfoSpeedAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> lfoDepthAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> morphAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;
 
     void updateDisplay();
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ZFilterEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ZFilterMiniEditor)
 };
