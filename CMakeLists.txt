@@ -32,7 +32,7 @@ juce_add_plugin(ZFilterMini
 
 juce_add_binary_data(ZFilterMiniData
     SOURCES
-        GUI/GUI-mini.png
+        GUI/GUI-mini-Logo.png
 )
 
 target_sources(ZFilterMini

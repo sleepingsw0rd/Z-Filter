@@ -290,7 +290,7 @@ ZFilterMiniEditor::ZFilterMiniEditor(ZFilterMiniProcessor& p)
 
     // Load background image
     backgroundImage = juce::ImageCache::getFromMemory(
-        BinaryData::GUImini_png, BinaryData::GUImini_pngSize);
+        BinaryData::GUIminiLogo_png, BinaryData::GUIminiLogo_pngSize);
 
     // LCD
     addAndMakeVisible(lcd);
@@ -417,7 +417,7 @@ void ZFilterMiniEditor::paint(juce::Graphics& g)
 void ZFilterMiniEditor::resized()
 {
     // LCD display — 4 rows x 8 cols, positioned over the green area
-    lcd.setBounds(135, 50, 295, 150);
+    lcd.setBounds(250, 50, 236, 120);
 
     // Big frequency knob — prominent, left side, overlapping panel and strip
     frequencyKnob.setBounds(540, 35, 150, 150);
