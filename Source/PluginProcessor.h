@@ -108,6 +108,9 @@ private:
     // Morph smoothing state
     double morphA = 0.0, morphB = 0.0;
 
+    // Frequency smoothing state
+    double freqA = 0.5, freqB = 0.5;
+
     // LFO state
     double lfoPhase = 0.0;
 

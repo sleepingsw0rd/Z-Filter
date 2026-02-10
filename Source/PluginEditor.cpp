@@ -318,6 +318,7 @@ ZFilterEditor::ZFilterEditor(ZFilterProcessor& p)
     addBtn(filterABtn);
     addBtn(filterBBtn);
     addBtn(lfoTargetBtn);
+    addBtn(freqSmoothBtn);
 
     // LEDs
     addAndMakeVisible(bypassLED);
@@ -332,6 +333,7 @@ ZFilterEditor::ZFilterEditor(ZFilterProcessor& p)
     addAndMakeVisible(filterALED);
     addAndMakeVisible(filterBLED);
     addAndMakeVisible(lfoTargetLED);
+    addAndMakeVisible(freqSmoothLED);
 
     // Button callbacks
     bypassBtn.onClick = [this]() {
@@ -388,6 +390,11 @@ ZFilterEditor::ZFilterEditor(ZFilterProcessor& p)
         param->setValueNotifyingHost((float)next / 2.0f);
     };
 
+    freqSmoothBtn.onClick = [this]() {
+        auto* param = processorRef.apvts.getParameter("freqSmooth");
+        param->setValueNotifyingHost(param->getValue() < 0.5f ? 1.0f : 0.0f);
+    };
+
     // Parameter attachments
     frequencyAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         processorRef.apvts, "frequency", frequencyKnob);
@@ -438,6 +445,7 @@ void ZFilterEditor::updateDisplay()
     float lfoSpd = *processorRef.apvts.getRawParameterValue("lfoSpeed");
     float lfoDpt = *processorRef.apvts.getRawParameterValue("lfoDepth");
     bool lfoSync = *processorRef.apvts.getRawParameterValue("lfoSync") > 0.5f;
+    bool freqSmooth = *processorRef.apvts.getRawParameterValue("freqSmooth") > 0.5f;
 
     // Filter type short names
     const char* typeShort[] = { "LP", "HP", "BP", "NT", "RG" };
@@ -449,11 +457,11 @@ void ZFilterEditor::updateDisplay()
     if (morphOn) {
         juce::String tA = (filterTypeA >= 0 && filterTypeA <= 4) ? typeShort[filterTypeA] : "LP";
         juce::String tB = (filterTypeB >= 0 && filterTypeB <= 4) ? typeShort[filterTypeB] : "BP";
-        row0 = "Z-FILTER MORPH " + tA + ">" + tB + (zOut ? " ZOUT" : "");
+        row0 = "Z-FILTER MORPH " + tA + ">" + tB + (zOut ? " ZOUT" : "") + (freqSmooth ? " SM" : "");
         row2 = "MORPH:" + juce::String(morph * 100.0f, 0) + "% RES:" + juce::String(reso * 100.0f, 0) + "%";
     } else {
         juce::String typeName = (filterTypeA >= 0 && filterTypeA <= 4) ? typeNames[filterTypeA] : "LOWPASS";
-        row0 = "Z-FILTER " + typeName + (zOut ? " ZOUT" : "");
+        row0 = "Z-FILTER " + typeName + (zOut ? " ZOUT" : "") + (freqSmooth ? " SM" : "");
         row2 = "IN:" + juce::String(input * 100.0f, 0) + "% RES:" + juce::String(reso * 100.0f, 0) + "%";
     }
 
@@ -500,6 +508,7 @@ void ZFilterEditor::updateDisplay()
     filterALED.setActive(morphOn);
     filterBLED.setActive(morphOn);
     lfoTargetLED.setActive(lfoTgt > 0);
+    freqSmoothLED.setActive(freqSmooth);
 
     repaint();
 }
@@ -529,25 +538,26 @@ void ZFilterEditor::paint(juce::Graphics& g)
     juce::String tgtLabel = juce::String("Tgt>") + tgtNames[juce::jlimit(0, 2, lfoTgt)];
 
     const int labelY = 253;
-    g.drawText("Bypass",   57, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("ZOut",    114, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Morph",   171, labelY, 50, 14, juce::Justification::centred);
-    g.drawText(fltALabel,  228, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Mrph",    285, labelY, 50, 14, juce::Justification::centred);
-    g.drawText(fltBLabel,  342, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("LP",      399, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("HP",      456, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("BP",      513, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("NT",      570, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("RG",      627, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Spd",     684, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Dpt",     741, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Sync",    798, labelY, 50, 14, juce::Justification::centred);
-    g.drawText(tgtLabel,   855, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Input",   912, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Poles",   969, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Level",  1026, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Mix",    1083, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Bypass",   82, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("ZOut",    139, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Morph",   196, labelY, 50, 14, juce::Justification::centred);
+    g.drawText(fltALabel,  253, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Mrph",    310, labelY, 50, 14, juce::Justification::centred);
+    g.drawText(fltBLabel,  367, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("LP",      424, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("HP",      481, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("BP",      538, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("NT",      595, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("RG",      652, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Spd",     709, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Dpt",     766, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Sync",    823, labelY, 50, 14, juce::Justification::centred);
+    g.drawText(tgtLabel,   880, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Input",   937, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Poles",   994, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Level",  1051, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Mix",    1108, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Smooth", 1165, labelY, 50, 14, juce::Justification::centred);
 }
 
 void ZFilterEditor::resized()
@@ -559,61 +569,65 @@ void ZFilterEditor::resized()
     frequencyKnob.setBounds(990, 18, 188, 188);
 
     // Control strip layout for 1200px width
-    // 19 controls at 57px center-to-center spacing, starting at center=82
-    // Centers: 82, 139, 196, 253, 310, 367, 424, 481, 538, 595, 652, 709, 766, 823, 880, 937, 994, 1051, 1108
+    // 20 controls at 57px center-to-center spacing, starting at center=107
+    // Centers: 107, 164, 221, 278, 335, 392, 449, 506, 563, 620, 677, 734, 791, 848, 905, 962, 1019, 1076, 1133, 1190
     const int ledY  = 241;
     const int btnY  = 274;
     const int knobY = 267;
 
-    // Bypass (center=82)
-    bypassBtn.setBounds(62, btnY, 40, 24);
-    bypassLED.setBounds(77, ledY, 10, 10);
+    // Bypass (center=107)
+    bypassBtn.setBounds(87, btnY, 40, 24);
+    bypassLED.setBounds(102, ledY, 10, 10);
 
-    // ZOut (center=139)
-    zOutBtn.setBounds(119, btnY, 40, 24);
-    zOutLED.setBounds(134, ledY, 10, 10);
+    // ZOut (center=164)
+    zOutBtn.setBounds(144, btnY, 40, 24);
+    zOutLED.setBounds(159, ledY, 10, 10);
 
-    // Morph Enable (center=196)
-    morphEnableBtn.setBounds(176, btnY, 40, 24);
-    morphEnableLED.setBounds(191, ledY, 10, 10);
+    // Morph Enable (center=221)
+    morphEnableBtn.setBounds(201, btnY, 40, 24);
+    morphEnableLED.setBounds(216, ledY, 10, 10);
 
-    // Filter A stepped selector (center=253)
-    filterABtn.setBounds(233, btnY, 40, 24);
-    filterALED.setBounds(248, ledY, 10, 10);
+    // Filter A stepped selector (center=278)
+    filterABtn.setBounds(258, btnY, 40, 24);
+    filterALED.setBounds(273, ledY, 10, 10);
 
-    // Morph knob (center=310)
-    morphKnob.setBounds(291, knobY, 38, 38);
+    // Morph knob (center=335)
+    morphKnob.setBounds(316, knobY, 38, 38);
 
-    // Filter B stepped selector (center=367)
-    filterBBtn.setBounds(347, btnY, 40, 24);
-    filterBLED.setBounds(362, ledY, 10, 10);
+    // Filter B stepped selector (center=392)
+    filterBBtn.setBounds(372, btnY, 40, 24);
+    filterBLED.setBounds(387, ledY, 10, 10);
 
     // Filter type buttons (LP/HP/BP/NT/RG) - quick-set for Filter A
-    lpBtn.setBounds(404, btnY, 40, 24);
-    hpBtn.setBounds(461, btnY, 40, 24);
-    bpBtn.setBounds(518, btnY, 40, 24);
-    ntBtn.setBounds(575, btnY, 40, 24);
-    rgBtn.setBounds(632, btnY, 40, 24);
+    lpBtn.setBounds(429, btnY, 40, 24);
+    hpBtn.setBounds(486, btnY, 40, 24);
+    bpBtn.setBounds(543, btnY, 40, 24);
+    ntBtn.setBounds(600, btnY, 40, 24);
+    rgBtn.setBounds(657, btnY, 40, 24);
 
-    lpLED.setBounds(419, ledY, 10, 10);
-    hpLED.setBounds(476, ledY, 10, 10);
-    bpLED.setBounds(533, ledY, 10, 10);
-    ntLED.setBounds(590, ledY, 10, 10);
-    rgLED.setBounds(647, ledY, 10, 10);
+    lpLED.setBounds(444, ledY, 10, 10);
+    hpLED.setBounds(501, ledY, 10, 10);
+    bpLED.setBounds(558, ledY, 10, 10);
+    ntLED.setBounds(615, ledY, 10, 10);
+    rgLED.setBounds(672, ledY, 10, 10);
 
     // LFO controls
-    lfoSpeedKnob.setBounds(690, knobY, 38, 38);
-    lfoDepthKnob.setBounds(747, knobY, 38, 38);
-    lfoSyncBtn.setBounds(803, btnY, 40, 24);
-    lfoSyncLED.setBounds(818, ledY, 10, 10);
+    lfoSpeedKnob.setBounds(715, knobY, 38, 38);
+    lfoDepthKnob.setBounds(772, knobY, 38, 38);
+    lfoSyncBtn.setBounds(828, btnY, 40, 24);
+    lfoSyncLED.setBounds(843, ledY, 10, 10);
 
-    // LFO Target (center=880)
-    lfoTargetBtn.setBounds(860, btnY, 40, 24);
-    lfoTargetLED.setBounds(875, ledY, 10, 10);
+    // LFO Target (center=905)
+    lfoTargetBtn.setBounds(885, btnY, 40, 24);
+    lfoTargetLED.setBounds(900, ledY, 10, 10);
 
     // Parameter knobs
-    inputKnob.setBounds(918, knobY, 38, 38);
-    resonanceKnob.setBounds(975, knobY, 38, 38);
-    outputKnob.setBounds(1032, knobY, 38, 38);
-    mixKnob.setBounds(1089, knobY, 38, 38);
+    inputKnob.setBounds(943, knobY, 38, 38);
+    resonanceKnob.setBounds(1000, knobY, 38, 38);
+    outputKnob.setBounds(1057, knobY, 38, 38);
+    mixKnob.setBounds(1114, knobY, 38, 38);
+
+    // Freq Smooth (center=1190)
+    freqSmoothBtn.setBounds(1170, btnY, 40, 24);
+    freqSmoothLED.setBounds(1185, ledY, 10, 10);
 }

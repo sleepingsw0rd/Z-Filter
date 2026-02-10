@@ -259,6 +259,7 @@ private:
     RoundButtonComponent filterBBtn;
     KnobComponent morphKnob { KnobComponent::Small };
     RoundButtonComponent lfoTargetBtn;
+    RoundButtonComponent freqSmoothBtn;
 
     // LEDs
     LEDComponent bypassLED;
@@ -273,6 +274,7 @@ private:
     LEDComponent filterALED;
     LEDComponent filterBLED;
     LEDComponent lfoTargetLED;
+    LEDComponent freqSmoothLED;
 
     // Parameter attachments
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> frequencyAttachment;
