@@ -24,7 +24,7 @@ Drop into your VST3 folder (typically `C:\Program Files\Common Files\VST3\`) and
 - **Opamp Modeling Stage**: Bandwidth-limited analog op-amp simulation with polynomial soft saturation
 - **Dot-Matrix LCD Display**: Real-time parameter readout in an HD44780-style display
 - **Dry/Wet Mix**: Blend filtered and dry signals
-- **Per-Sample Coefficient Smoothing**: Click-free parameter automation
+- **Freq Smooth Mode**: Per-sample coefficient recomputation for click-free frequency automation
 - **Tiny Footprint**: 723x342 pixel window — fits anywhere
 
 ## Controls
@@ -37,6 +37,7 @@ Drop into your VST3 folder (typically `C:\Program Files\Common Files\VST3\`) and
 | **Poles** | Filter resonance / cascade depth (1-4 stages) |
 | **Level** | Post-filter output gain |
 | **Mix** | Dry/wet blend |
+| **Smth** | Enable freq smooth mode for click-free frequency automation |
 
 ## Building
 
