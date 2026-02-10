@@ -17,16 +17,16 @@ Drop into your VST3 folder (typically `C:\Program Files\Common Files\VST3\`) and
 
 ## Features
 
-- **Dual Filters (A + B)**: Independent filter type selection with 5 modes each — Lowpass, Highpass, Bandpass, Notch, Region Gate
+- **Dual Filters (A + B)**: Independent filter type selection with 4 modes each — Lowpass, Highpass, Bandpass, Notch
 - **Serial / Parallel Routing**: Chain filters in series (A→B) or run in parallel (A||B)
-- **Filter Morphing**: Smoothly blend between Filter A and B with coefficient interpolation or region crossfade
+- **Filter Morphing**: Smoothly blend between Filter A and B with coefficient interpolation
 - **Morph LFO**: Dedicated LFO for morph position with tempo sync support
 - **Dual LFOs (A + B)**: Independent tempo-syncable LFOs modulating filter cutoff, with LFO Link mode
 - **Cascaded Biquad Architecture**: Up to 4 stages per filter (12-48 dB/octave) via independent Poles knobs
 - **Z-Output Stage**: Optional Airwindows output processing for analog character
 - **Opamp Modeling Stage**: Bandwidth-limited analog op-amp simulation
 - **Dot-Matrix LCD Display**: 4-row real-time parameter readout (HD44780 style)
-- **Per-Sample Coefficient Smoothing**: Click-free parameter automation
+- **Freq Smooth Mode**: Per-sample coefficient recomputation for click-free frequency automation
 - **Dry/Wet Mix + Bypass**: Full signal control with LED indicators
 
 ## Controls
@@ -36,7 +36,7 @@ Drop into your VST3 folder (typically `C:\Program Files\Common Files\VST3\`) and
 | Control | Function |
 |---------|----------|
 | **On** (A / B) | Enable/disable each filter independently |
-| **LP / HP / BP / NT / RG** | Filter type quick-select buttons (per row) |
+| **LP / HP / BP / NT** | Filter type quick-select buttons (per row) |
 | **Poles** (A / B) | Filter resonance / cascade depth per filter |
 | **SER / PAR** | Toggle serial (A→B) or parallel (A\|\|B) routing |
 
@@ -69,6 +69,7 @@ Drop into your VST3 folder (typically `C:\Program Files\Common Files\VST3\`) and
 | **Mix** | Dry/wet blend |
 | **ZOut** | Enable Z-Output stage |
 | **Byp** | Bypass all processing |
+| **Smth** | Enable freq smooth mode for click-free frequency automation |
 
 ## Building
 
@@ -96,7 +97,7 @@ Build artifacts:
 2. Frequency-dependent trim scaling
 3. Dual LFO modulation of filter cutoff (per-sample)
 4. Morph LFO modulation of morph position (per-sample)
-5. Filter processing: coefficient blend (non-Region) or output crossfade (Region)
+5. Filter processing with coefficient blend morphing
 6. Up to 4 cascaded biquad stages per filter (Transposed Direct Form II)
 7. Opamp stage: 15.5 kHz lowpass → polynomial soft saturation → 15.5 kHz lowpass
 8. Output gain

@@ -305,14 +305,14 @@ ZFilterEditor::ZFilterEditor(ZFilterProcessor& p)
 
     // Filter A row
     addBtn(filterAEnableBtn); addLED(filterAEnableLED);
-    addBtn(lpABtn); addBtn(hpABtn); addBtn(bpABtn); addBtn(ntABtn); addBtn(rgABtn);
-    addLED(lpALED); addLED(hpALED); addLED(bpALED); addLED(ntALED); addLED(rgALED);
+    addBtn(lpABtn); addBtn(hpABtn); addBtn(bpABtn); addBtn(ntABtn);
+    addLED(lpALED); addLED(hpALED); addLED(bpALED); addLED(ntALED);
     addKnob(polesAKnob);
 
     // Filter B row
     addBtn(filterBEnableBtn); addLED(filterBEnableLED);
-    addBtn(lpBBtn); addBtn(hpBBtn); addBtn(bpBBtn); addBtn(ntBBtn); addBtn(rgBBtn);
-    addLED(lpBLED); addLED(hpBLED); addLED(bpBLED); addLED(ntBLED); addLED(rgBLED);
+    addBtn(lpBBtn); addBtn(hpBBtn); addBtn(bpBBtn); addBtn(ntBBtn);
+    addLED(lpBLED); addLED(hpBLED); addLED(bpBLED); addLED(ntBLED);
     addKnob(polesBKnob);
 
     // Routing
@@ -365,23 +365,21 @@ ZFilterEditor::ZFilterEditor(ZFilterProcessor& p)
 
     // Filter A type quick-set buttons
     auto setFilterA = [this](int index) {
-        processorRef.apvts.getParameter("filterTypeA")->setValueNotifyingHost((float)index / 4.0f);
+        processorRef.apvts.getParameter("filterTypeA")->setValueNotifyingHost((float)index / 3.0f);
     };
     lpABtn.onClick = [setFilterA]() { setFilterA(0); };
     hpABtn.onClick = [setFilterA]() { setFilterA(1); };
     bpABtn.onClick = [setFilterA]() { setFilterA(2); };
     ntABtn.onClick = [setFilterA]() { setFilterA(3); };
-    rgABtn.onClick = [setFilterA]() { setFilterA(4); };
 
     // Filter B type quick-set buttons
     auto setFilterB = [this](int index) {
-        processorRef.apvts.getParameter("filterTypeB")->setValueNotifyingHost((float)index / 4.0f);
+        processorRef.apvts.getParameter("filterTypeB")->setValueNotifyingHost((float)index / 3.0f);
     };
     lpBBtn.onClick = [setFilterB]() { setFilterB(0); };
     hpBBtn.onClick = [setFilterB]() { setFilterB(1); };
     bpBBtn.onClick = [setFilterB]() { setFilterB(2); };
     ntBBtn.onClick = [setFilterB]() { setFilterB(3); };
-    rgBBtn.onClick = [setFilterB]() { setFilterB(4); };
 
     // === Parameter attachments ===
     frequencyAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
@@ -474,11 +472,11 @@ void ZFilterEditor::updateDisplay()
         }
     };
 
-    const char* typeShort[] = { "LP", "HP", "BP", "NT", "RG" };
-    const char* typeNames[] = { "LOWPASS", "HIGHPASS", "BANDPASS", "NOTCH", "REGION" };
+    const char* typeShort[] = { "LP", "HP", "BP", "NT" };
+    const char* typeNames[] = { "LOWPASS", "HIGHPASS", "BANDPASS", "NOTCH" };
 
-    juce::String tA = typeShort[juce::jlimit(0, 4, filterTypeA)];
-    juce::String tB = typeShort[juce::jlimit(0, 4, filterTypeB)];
+    juce::String tA = typeShort[juce::jlimit(0, 3, filterTypeA)];
+    juce::String tB = typeShort[juce::jlimit(0, 3, filterTypeB)];
 
     juce::String row0, row1, row2, row3;
 
@@ -488,9 +486,9 @@ void ZFilterEditor::updateDisplay()
     } else if (filterAOn && filterBOn) {
         row0 = "Z-FILTER v2 " + tA + (parallel ? "||" : "->") + tB;
     } else if (filterAOn) {
-        row0 = "Z-FILTER v2 A:" + juce::String(typeNames[juce::jlimit(0, 4, filterTypeA)]);
+        row0 = "Z-FILTER v2 A:" + juce::String(typeNames[juce::jlimit(0, 3, filterTypeA)]);
     } else if (filterBOn) {
-        row0 = "Z-FILTER v2 B:" + juce::String(typeNames[juce::jlimit(0, 4, filterTypeB)]);
+        row0 = "Z-FILTER v2 B:" + juce::String(typeNames[juce::jlimit(0, 3, filterTypeB)]);
     } else {
         row0 = "Z-FILTER v2 [NO FILTER]";
     }
@@ -535,7 +533,6 @@ void ZFilterEditor::updateDisplay()
     hpALED.setActive(filterTypeA == 1);
     bpALED.setActive(filterTypeA == 2);
     ntALED.setActive(filterTypeA == 3);
-    rgALED.setActive(filterTypeA == 4);
     filterAEnableLED.setActive(filterAOn);
 
     // LEDs - Filter B type
@@ -543,7 +540,6 @@ void ZFilterEditor::updateDisplay()
     hpBLED.setActive(filterTypeB == 1);
     bpBLED.setActive(filterTypeB == 2);
     ntBLED.setActive(filterTypeB == 3);
-    rgBLED.setActive(filterTypeB == 4);
     filterBEnableLED.setActive(filterBOn);
 
     // LEDs - routing, LFO, morph, master
@@ -597,7 +593,6 @@ void ZFilterEditor::paint(juce::Graphics& g)
     g.drawText("HP",   150, rowALblY, 36, 12, juce::Justification::centred);
     g.drawText("BP",   200, rowALblY, 36, 12, juce::Justification::centred);
     g.drawText("NT",   250, rowALblY, 36, 12, juce::Justification::centred);
-    g.drawText("RG",   300, rowALblY, 36, 12, juce::Justification::centred);
     g.drawText("Poles", 353, rowALblY, 44, 12, juce::Justification::centred);
 
     // Routing label (moved to Filter A row, dynamic SER/PAR)
@@ -610,7 +605,6 @@ void ZFilterEditor::paint(juce::Graphics& g)
     g.drawText("HP",   150, rowBLblY, 36, 12, juce::Justification::centred);
     g.drawText("BP",   200, rowBLblY, 36, 12, juce::Justification::centred);
     g.drawText("NT",   250, rowBLblY, 36, 12, juce::Justification::centred);
-    g.drawText("RG",   300, rowBLblY, 36, 12, juce::Justification::centred);
     g.drawText("Poles", 353, rowBLblY, 44, 12, juce::Justification::centred);
 
     // Row labels (A / B) shifted right
@@ -674,7 +668,6 @@ void ZFilterEditor::resized()
     hpABtn.setBounds(150, rowABtnY, bW, bH);  hpALED.setBounds(163, rowALedY, 10, 10);
     bpABtn.setBounds(200, rowABtnY, bW, bH);  bpALED.setBounds(213, rowALedY, 10, 10);
     ntABtn.setBounds(250, rowABtnY, bW, bH);  ntALED.setBounds(263, rowALedY, 10, 10);
-    rgABtn.setBounds(300, rowABtnY, bW, bH);  rgALED.setBounds(313, rowALedY, 10, 10);
     polesAKnob.setBounds(358, rowAKnobY, kS, kS);
     // Routing button at end of Filter A row
     routingBtn.setBounds(405, rowABtnY, bW, bH);
@@ -687,7 +680,6 @@ void ZFilterEditor::resized()
     hpBBtn.setBounds(150, rowBBtnY, bW, bH);  hpBLED.setBounds(163, rowBLedY, 10, 10);
     bpBBtn.setBounds(200, rowBBtnY, bW, bH);  bpBLED.setBounds(213, rowBLedY, 10, 10);
     ntBBtn.setBounds(250, rowBBtnY, bW, bH);  ntBLED.setBounds(263, rowBLedY, 10, 10);
-    rgBBtn.setBounds(300, rowBBtnY, bW, bH);  rgBLED.setBounds(313, rowBLedY, 10, 10);
     polesBKnob.setBounds(358, rowBKnobY, kS, kS);
 
     // === [LFO] section (shifted left ~30px) ===

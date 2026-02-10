@@ -240,15 +240,15 @@ private:
     // Filter A row
     RoundButtonComponent filterAEnableBtn;
     LEDComponent filterAEnableLED;
-    RoundButtonComponent lpABtn, hpABtn, bpABtn, ntABtn, rgABtn;
-    LEDComponent lpALED, hpALED, bpALED, ntALED, rgALED;
+    RoundButtonComponent lpABtn, hpABtn, bpABtn, ntABtn;
+    LEDComponent lpALED, hpALED, bpALED, ntALED;
     KnobComponent polesAKnob { KnobComponent::Small };
 
     // Filter B row
     RoundButtonComponent filterBEnableBtn;
     LEDComponent filterBEnableLED;
-    RoundButtonComponent lpBBtn, hpBBtn, bpBBtn, ntBBtn, rgBBtn;
-    LEDComponent lpBLED, hpBLED, bpBLED, ntBLED, rgBLED;
+    RoundButtonComponent lpBBtn, hpBBtn, bpBBtn, ntBBtn;
+    LEDComponent lpBLED, hpBLED, bpBLED, ntBLED;
     KnobComponent polesBKnob { KnobComponent::Small };
 
     // Routing
