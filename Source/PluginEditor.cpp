@@ -582,7 +582,7 @@ void ZFilterEditor::paint(juce::Graphics& g)
     g.drawText("[FILTERS]", 10, 232, 510, 18, juce::Justification::centred);
     g.drawText("[LFO]",    490, 232, 190, 18, juce::Justification::centred);
     g.drawText("[MORPH]",  730, 232, 150, 18, juce::Justification::centred);
-    g.drawText("[MASTER]", 970, 232, 220, 18, juce::Justification::centred);
+    g.drawText("[MASTER]", 930, 232, 220, 18, juce::Justification::centred);
 
     // Control labels
     g.setFont(juce::Font(10.0f));
@@ -639,13 +639,13 @@ void ZFilterEditor::paint(juce::Graphics& g)
 
     // Master labels
     // Button labels (row A)
-    g.drawText("ZOut",  1015, rowALblY, 36, 12, juce::Justification::centred);
-    g.drawText("Byp",   1080, rowALblY, 36, 12, juce::Justification::centred);
-    g.drawText("Smth",  1145, rowALblY, 36, 12, juce::Justification::centred);
+    g.drawText("ZOut",   975, rowALblY, 36, 12, juce::Justification::centred);
+    g.drawText("Byp",  1040, rowALblY, 36, 12, juce::Justification::centred);
+    g.drawText("Smth", 1105, rowALblY, 36, 12, juce::Justification::centred);
     // Knob labels (row B)
-    g.drawText("Input",  992, rowBLblY, 34, 12, juce::Justification::centred);
-    g.drawText("Level", 1042, rowBLblY, 34, 12, juce::Justification::centred);
-    g.drawText("Mix",   1092, rowBLblY, 34, 12, juce::Justification::centred);
+    g.drawText("Input",  952, rowBLblY, 34, 12, juce::Justification::centred);
+    g.drawText("Level", 1002, rowBLblY, 34, 12, juce::Justification::centred);
+    g.drawText("Mix",   1052, rowBLblY, 34, 12, juce::Justification::centred);
 }
 
 void ZFilterEditor::resized()
@@ -718,17 +718,17 @@ void ZFilterEditor::resized()
     morphLfoSyncBtn.setBounds(855, rowBBtnY, bW, bH);
     morphLfoSyncLED.setBounds(868, rowBLedY, 10, 10);
 
-    // === [MASTER] section (x: 970-1190) ===
-    // Row A (upper): ZOut and Bypass buttons
-    zOutBtn.setBounds(1015, rowABtnY, bW, bH);
-    zOutLED.setBounds(1028, rowALedY, 10, 10);
-    bypassBtn.setBounds(1080, rowABtnY, bW, bH);
-    bypassLED.setBounds(1093, rowALedY, 10, 10);
-    freqSmoothBtn.setBounds(1145, rowABtnY, bW, bH);
-    freqSmoothLED.setBounds(1158, rowALedY, 10, 10);
+    // === [MASTER] section (x: 930-1150) ===
+    // Row A (upper): ZOut, Bypass, Smooth buttons
+    zOutBtn.setBounds(975, rowABtnY, bW, bH);
+    zOutLED.setBounds(988, rowALedY, 10, 10);
+    bypassBtn.setBounds(1040, rowABtnY, bW, bH);
+    bypassLED.setBounds(1053, rowALedY, 10, 10);
+    freqSmoothBtn.setBounds(1105, rowABtnY, bW, bH);
+    freqSmoothLED.setBounds(1118, rowALedY, 10, 10);
 
     // Row B (lower): Input, Level, Mix knobs
-    inputKnob.setBounds(992, rowBKnobY, kS, kS);
-    outputKnob.setBounds(1042, rowBKnobY, kS, kS);
-    mixKnob.setBounds(1092, rowBKnobY, kS, kS);
+    inputKnob.setBounds(952, rowBKnobY, kS, kS);
+    outputKnob.setBounds(1002, rowBKnobY, kS, kS);
+    mixKnob.setBounds(1052, rowBKnobY, kS, kS);
 }
