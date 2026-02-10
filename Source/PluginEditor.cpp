@@ -403,7 +403,7 @@ void ZFilterMiniEditor::paint(juce::Graphics& g)
 
     const int labelY = 288;
     const int spacing = 60;
-    const int startX = 218;
+    const int startX = 168;      // shifted left 50px
     const int labelW = 50;
 
     // Frequency label (under big knob, centered on 15 + 150/2 = 90)
@@ -441,7 +441,7 @@ void ZFilterMiniEditor::resized()
     const int btnY = 256;        // top of buttons (vertically centered with knobs)
     const int ledY = 240;        // LEDs above buttons
     const int spacing = 60;      // uniform center-to-center spacing
-    const int startX = 218;      // center of first control (LP button)
+    const int startX = 168;      // center of first control (LP button) — shifted left 50px
 
     // Filter type buttons + LEDs
     auto btnCX = [&](int i) { return startX + i * spacing; };
