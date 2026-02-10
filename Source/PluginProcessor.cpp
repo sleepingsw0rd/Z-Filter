@@ -153,6 +153,8 @@ void ZFilterMiniProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
             break;
         case Notch:
             biquadA[biq_freq] = ((pow((double)B, 3) * 4700.0) / sr) + 0.0009963;
+            clipFactor = 0.91 - ((1.0 - (double)B) * 0.15);
+            useClip = true;
             biquadA[biq_reso] = 0.618;
             break;
     }
@@ -287,6 +289,7 @@ void ZFilterMiniProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
             switch (filterType) {
                 case Lowpass:  smoothedClipFactor = 1.212 - ((1.0 - smoothedB) * 0.496); break;
                 case Bandpass: smoothedClipFactor = 1.0 - ((1.0 - smoothedB) * 0.304); break;
+                case Notch:    smoothedClipFactor = 0.91 - ((1.0 - smoothedB) * 0.15); break;
                 default: break;
             }
         }
