@@ -50,7 +50,7 @@ public:
     //==============================================================================
     juce::AudioProcessorValueTreeState apvts;
 
-    enum FilterType { Lowpass = 0, Highpass, Bandpass, Notch, Region };
+    enum FilterType { Lowpass = 0, Highpass, Bandpass, Notch };
 
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -76,22 +76,16 @@ private:
     double biquadB[biq_total] = {};
     double biquadC[biq_total] = {};
     double biquadD[biq_total] = {};
-    double biquadE[biq_total] = {};
 
     // Second filter (B) biquad arrays for morphing
     double biquadA2[biq_total] = {};
     double biquadB2[biq_total] = {};
     double biquadC2[biq_total] = {};
     double biquadD2[biq_total] = {};
-    double biquadE2[biq_total] = {};
 
     // Opamp stage state
     double fixA[fix_total] = {};
     double fixB[fix_total] = {};
-
-    // Second opamp/IIR state for Region crossfade
-    double fixA2[fix_total] = {};
-    double fixB2[fix_total] = {};
 
     // IIR state
     double iirSampleAL = 0.0;

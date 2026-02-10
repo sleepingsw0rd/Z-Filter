@@ -249,7 +249,6 @@ private:
     RoundButtonComponent hpBtn;
     RoundButtonComponent bpBtn;
     RoundButtonComponent ntBtn;
-    RoundButtonComponent rgBtn;
     RoundButtonComponent lfoSyncBtn;
     RoundButtonComponent zOutBtn;
 
@@ -267,7 +266,6 @@ private:
     LEDComponent hpLED;
     LEDComponent bpLED;
     LEDComponent ntLED;
-    LEDComponent rgLED;
     LEDComponent lfoSyncLED;
     LEDComponent zOutLED;
     LEDComponent morphEnableLED;

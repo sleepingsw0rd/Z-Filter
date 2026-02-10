@@ -17,7 +17,7 @@ Drop into your VST3 folder (typically `C:\Program Files\Common Files\VST3\`) and
 
 ## Features
 
-- **5 Filter Types**: Lowpass, Highpass, Bandpass, Notch, Region Gate
+- **4 Filter Types**: Lowpass, Highpass, Bandpass, Notch
 - **Filter Morphing**: Smoothly blend between two filter types (A and B) with independent type selection
 - **Cascaded Biquad Architecture**: Up to 4 cascaded filter stages (12-48 dB/octave) controlled by the Resonance knob
 - **LFO Modulation**: Tempo-syncable LFO with adjustable speed and depth, targeting Cutoff, Morph, or both
@@ -37,10 +37,10 @@ Drop into your VST3 folder (typically `C:\Program Files\Common Files\VST3\`) and
 | **Bypass** | Bypass all processing | On/Off |
 | **ZOut** | Enable Z-Output stage | On/Off |
 | **Morph** (enable) | Enable filter morphing between A and B types | On/Off |
-| **A>LP** (Flt A) | Filter A type selector | LP/HP/BP/NT/RG (cycles on click) |
+| **A>LP** (Flt A) | Filter A type selector | LP/HP/BP/NT (cycles on click) |
 | **Mrph** (knob) | Morph blend between Filter A and B | 0% to 100% |
-| **B>BP** (Flt B) | Filter B type selector | LP/HP/BP/NT/RG (cycles on click) |
-| **LP / HP / BP / NT / RG** | Quick-set Filter A type | Lowpass, Highpass, Bandpass, Notch, Region Gate |
+| **B>BP** (Flt B) | Filter B type selector | LP/HP/BP/NT (cycles on click) |
+| **LP / HP / BP / NT** | Quick-set Filter A type | Lowpass, Highpass, Bandpass, Notch |
 | **Spd** | LFO speed | 0.01 Hz to 20 Hz (free) or tempo-synced divisions |
 | **Dpt** | LFO depth | 0% to 100% |
 | **Sync** | LFO tempo sync | On/Off |
