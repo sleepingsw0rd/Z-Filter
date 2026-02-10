@@ -538,26 +538,26 @@ void ZFilterEditor::paint(juce::Graphics& g)
     juce::String tgtLabel = juce::String("Tgt>") + tgtNames[juce::jlimit(0, 2, lfoTgt)];
 
     const int labelY = 253;
-    g.drawText("Bypass",   82, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("ZOut",    139, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Morph",   196, labelY, 50, 14, juce::Justification::centred);
-    g.drawText(fltALabel,  253, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Mrph",    310, labelY, 50, 14, juce::Justification::centred);
-    g.drawText(fltBLabel,  367, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("LP",      424, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("HP",      481, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("BP",      538, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("NT",      595, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("RG",      652, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Spd",     709, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Dpt",     766, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Sync",    823, labelY, 50, 14, juce::Justification::centred);
-    g.drawText(tgtLabel,   880, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Input",   937, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Poles",   994, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Level",  1051, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Mix",    1108, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Smooth", 1165, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Bypass",   52, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("ZOut",    109, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Morph",   166, labelY, 50, 14, juce::Justification::centred);
+    g.drawText(fltALabel,  223, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Mrph",    280, labelY, 50, 14, juce::Justification::centred);
+    g.drawText(fltBLabel,  337, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("LP",      394, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("HP",      451, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("BP",      508, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("NT",      565, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("RG",      622, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Spd",     679, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Dpt",     736, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Sync",    793, labelY, 50, 14, juce::Justification::centred);
+    g.drawText(tgtLabel,   850, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Input",   907, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Poles",   964, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Level",  1021, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Mix",    1078, labelY, 50, 14, juce::Justification::centred);
+    g.drawText("Smooth", 1135, labelY, 50, 14, juce::Justification::centred);
 }
 
 void ZFilterEditor::resized()
@@ -569,65 +569,65 @@ void ZFilterEditor::resized()
     frequencyKnob.setBounds(990, 18, 188, 188);
 
     // Control strip layout for 1200px width
-    // 20 controls at 57px center-to-center spacing, starting at center=107
-    // Centers: 107, 164, 221, 278, 335, 392, 449, 506, 563, 620, 677, 734, 791, 848, 905, 962, 1019, 1076, 1133, 1190
+    // 20 controls at 57px center-to-center spacing, starting at center=77
+    // Centers: 77, 134, 191, 248, 305, 362, 419, 476, 533, 590, 647, 704, 761, 818, 875, 932, 989, 1046, 1103, 1160
     const int ledY  = 241;
     const int btnY  = 274;
     const int knobY = 267;
 
-    // Bypass (center=107)
-    bypassBtn.setBounds(87, btnY, 40, 24);
-    bypassLED.setBounds(102, ledY, 10, 10);
+    // Bypass (center=77)
+    bypassBtn.setBounds(57, btnY, 40, 24);
+    bypassLED.setBounds(72, ledY, 10, 10);
 
-    // ZOut (center=164)
-    zOutBtn.setBounds(144, btnY, 40, 24);
-    zOutLED.setBounds(159, ledY, 10, 10);
+    // ZOut (center=134)
+    zOutBtn.setBounds(114, btnY, 40, 24);
+    zOutLED.setBounds(129, ledY, 10, 10);
 
-    // Morph Enable (center=221)
-    morphEnableBtn.setBounds(201, btnY, 40, 24);
-    morphEnableLED.setBounds(216, ledY, 10, 10);
+    // Morph Enable (center=191)
+    morphEnableBtn.setBounds(171, btnY, 40, 24);
+    morphEnableLED.setBounds(186, ledY, 10, 10);
 
-    // Filter A stepped selector (center=278)
-    filterABtn.setBounds(258, btnY, 40, 24);
-    filterALED.setBounds(273, ledY, 10, 10);
+    // Filter A stepped selector (center=248)
+    filterABtn.setBounds(228, btnY, 40, 24);
+    filterALED.setBounds(243, ledY, 10, 10);
 
-    // Morph knob (center=335)
-    morphKnob.setBounds(316, knobY, 38, 38);
+    // Morph knob (center=305)
+    morphKnob.setBounds(286, knobY, 38, 38);
 
-    // Filter B stepped selector (center=392)
-    filterBBtn.setBounds(372, btnY, 40, 24);
-    filterBLED.setBounds(387, ledY, 10, 10);
+    // Filter B stepped selector (center=362)
+    filterBBtn.setBounds(342, btnY, 40, 24);
+    filterBLED.setBounds(357, ledY, 10, 10);
 
     // Filter type buttons (LP/HP/BP/NT/RG) - quick-set for Filter A
-    lpBtn.setBounds(429, btnY, 40, 24);
-    hpBtn.setBounds(486, btnY, 40, 24);
-    bpBtn.setBounds(543, btnY, 40, 24);
-    ntBtn.setBounds(600, btnY, 40, 24);
-    rgBtn.setBounds(657, btnY, 40, 24);
+    lpBtn.setBounds(399, btnY, 40, 24);
+    hpBtn.setBounds(456, btnY, 40, 24);
+    bpBtn.setBounds(513, btnY, 40, 24);
+    ntBtn.setBounds(570, btnY, 40, 24);
+    rgBtn.setBounds(627, btnY, 40, 24);
 
-    lpLED.setBounds(444, ledY, 10, 10);
-    hpLED.setBounds(501, ledY, 10, 10);
-    bpLED.setBounds(558, ledY, 10, 10);
-    ntLED.setBounds(615, ledY, 10, 10);
-    rgLED.setBounds(672, ledY, 10, 10);
+    lpLED.setBounds(414, ledY, 10, 10);
+    hpLED.setBounds(471, ledY, 10, 10);
+    bpLED.setBounds(528, ledY, 10, 10);
+    ntLED.setBounds(585, ledY, 10, 10);
+    rgLED.setBounds(642, ledY, 10, 10);
 
     // LFO controls
-    lfoSpeedKnob.setBounds(715, knobY, 38, 38);
-    lfoDepthKnob.setBounds(772, knobY, 38, 38);
-    lfoSyncBtn.setBounds(828, btnY, 40, 24);
-    lfoSyncLED.setBounds(843, ledY, 10, 10);
+    lfoSpeedKnob.setBounds(685, knobY, 38, 38);
+    lfoDepthKnob.setBounds(742, knobY, 38, 38);
+    lfoSyncBtn.setBounds(798, btnY, 40, 24);
+    lfoSyncLED.setBounds(813, ledY, 10, 10);
 
-    // LFO Target (center=905)
-    lfoTargetBtn.setBounds(885, btnY, 40, 24);
-    lfoTargetLED.setBounds(900, ledY, 10, 10);
+    // LFO Target (center=875)
+    lfoTargetBtn.setBounds(855, btnY, 40, 24);
+    lfoTargetLED.setBounds(870, ledY, 10, 10);
 
     // Parameter knobs
-    inputKnob.setBounds(943, knobY, 38, 38);
-    resonanceKnob.setBounds(1000, knobY, 38, 38);
-    outputKnob.setBounds(1057, knobY, 38, 38);
-    mixKnob.setBounds(1114, knobY, 38, 38);
+    inputKnob.setBounds(913, knobY, 38, 38);
+    resonanceKnob.setBounds(970, knobY, 38, 38);
+    outputKnob.setBounds(1027, knobY, 38, 38);
+    mixKnob.setBounds(1084, knobY, 38, 38);
 
-    // Freq Smooth (center=1190)
-    freqSmoothBtn.setBounds(1170, btnY, 40, 24);
-    freqSmoothLED.setBounds(1185, ledY, 10, 10);
+    // Freq Smooth (center=1160)
+    freqSmoothBtn.setBounds(1140, btnY, 40, 24);
+    freqSmoothLED.setBounds(1155, ledY, 10, 10);
 }
