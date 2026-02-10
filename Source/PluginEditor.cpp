@@ -339,6 +339,7 @@ ZFilterEditor::ZFilterEditor(ZFilterProcessor& p)
     addKnob(inputKnob); addKnob(outputKnob); addKnob(mixKnob);
     addBtn(zOutBtn); addLED(zOutLED);
     addBtn(bypassBtn); addLED(bypassLED);
+    addBtn(freqSmoothBtn); addLED(freqSmoothLED);
 
     // === Button callbacks ===
 
@@ -360,6 +361,7 @@ ZFilterEditor::ZFilterEditor(ZFilterProcessor& p)
     morphLfoSyncBtn.onClick  = makeToggle("morphLfoSync");
     zOutBtn.onClick          = makeToggle("zOutputStage");
     bypassBtn.onClick        = makeToggle("bypass");
+    freqSmoothBtn.onClick    = makeToggle("freqSmooth");
 
     // Filter A type quick-set buttons
     auto setFilterA = [this](int index) {
@@ -441,6 +443,7 @@ void ZFilterEditor::updateDisplay()
     float input = *processorRef.apvts.getRawParameterValue("input");
     bool bypassed = *processorRef.apvts.getRawParameterValue("bypass") > 0.5f;
     bool zOut = *processorRef.apvts.getRawParameterValue("zOutputStage") > 0.5f;
+    bool freqSmooth = *processorRef.apvts.getRawParameterValue("freqSmooth") > 0.5f;
     bool lfoASync = *processorRef.apvts.getRawParameterValue("lfoASync") > 0.5f;
     bool lfoBSync = *processorRef.apvts.getRawParameterValue("lfoBSync") > 0.5f;
     float lfoASpd = *processorRef.apvts.getRawParameterValue("lfoASpeed");
@@ -492,6 +495,7 @@ void ZFilterEditor::updateDisplay()
         row0 = "Z-FILTER v2 [NO FILTER]";
     }
     if (zOut) row0 += " ZOUT";
+    if (freqSmooth) row0 += " SM";
 
     // Row 1: Frequency + Poles + Input
     row1 = "FRQ:" + juce::String(freq * 100.0f, 1) + "%" +
@@ -551,6 +555,7 @@ void ZFilterEditor::updateDisplay()
     morphLfoSyncLED.setActive(morphLfoSync);
     zOutLED.setActive(zOut);
     bypassLED.setActive(bypassed);
+    freqSmoothLED.setActive(freqSmooth);
 
     // LFO Link visual feedback: dim LFO B controls when linked
     lfoBSpeedKnob.setEnabled(!lfoLnk);
@@ -636,6 +641,7 @@ void ZFilterEditor::paint(juce::Graphics& g)
     // Button labels (row A)
     g.drawText("ZOut",  1015, rowALblY, 36, 12, juce::Justification::centred);
     g.drawText("Byp",   1080, rowALblY, 36, 12, juce::Justification::centred);
+    g.drawText("Smth",  1145, rowALblY, 36, 12, juce::Justification::centred);
     // Knob labels (row B)
     g.drawText("Input",  992, rowBLblY, 34, 12, juce::Justification::centred);
     g.drawText("Level", 1042, rowBLblY, 34, 12, juce::Justification::centred);
@@ -718,6 +724,8 @@ void ZFilterEditor::resized()
     zOutLED.setBounds(1028, rowALedY, 10, 10);
     bypassBtn.setBounds(1080, rowABtnY, bW, bH);
     bypassLED.setBounds(1093, rowALedY, 10, 10);
+    freqSmoothBtn.setBounds(1145, rowABtnY, bW, bH);
+    freqSmoothLED.setBounds(1158, rowALedY, 10, 10);
 
     // Row B (lower): Input, Level, Mix knobs
     inputKnob.setBounds(992, rowBKnobY, kS, kS);

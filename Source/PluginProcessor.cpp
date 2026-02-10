@@ -99,6 +99,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout ZFilterProcessor::createPara
         juce::ParameterID("zOutputStage", 2), "ZOutputStage", false));
     params.push_back(std::make_unique<juce::AudioParameterBool>(
         juce::ParameterID("bypass", 2), "Bypass", false));
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("freqSmooth", 2), "Freq Smooth", false));
 
     return { params.begin(), params.end() };
 }
@@ -146,6 +148,7 @@ void ZFilterProcessor::prepareToPlay(double, int)
     outTrimA = outTrimB = 0.0;
     wetA = wetB = 0.0;
     mixA = mixB = 0.0;
+    freqA = freqB = 0.5;
 
     fpdL = 1; while (fpdL < 16386) fpdL = (uint32_t)rand() * (uint32_t)UINT32_MAX;
     fpdR = 1; while (fpdR < 16386) fpdR = (uint32_t)rand() * (uint32_t)UINT32_MAX;
@@ -198,10 +201,15 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
     const float lfoBDepth = *apvts.getRawParameterValue("lfoBDepth");
     const bool lfoBSyncEnabled = *apvts.getRawParameterValue("lfoBSync") > 0.5f;
     const bool lfoLinked = *apvts.getRawParameterValue("lfoLink") > 0.5f;
+    const bool freqSmoothEnabled = *apvts.getRawParameterValue("freqSmooth") > 0.5f;
 
     // Morph smoothing
     morphA = morphB;
     morphB = morphEnabled ? (double)morphParam : 0.0;
+
+    // Frequency smoothing A/B rotation
+    freqA = freqB;
+    freqB = (double)B;
 
     if (bypassed)
         return;
@@ -328,6 +336,9 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
         }
     };
 
+    // Save previous biq_freq for trim smoothing
+    double prevBiqFreqA = biquadA[biq_freq];
+
     // Always compute coefficients for Filter A (primary arrays)
     double clipFactorA = 1.0; bool useClipA = false;
     computeFilterCoeffs(filterTypeA, (double)B, (double)polesAParam,
@@ -381,7 +392,8 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
         fixB2[x] = fixB[x];
     }
 
-    double trim = 0.1 + (3.712 * biquadA[biq_freq]);
+    double trimOld = 0.1 + (3.712 * prevBiqFreqA);
+    double trimNew = 0.1 + (3.712 * biquadA[biq_freq]);
 
     // Determine if we need Region crossfade mode for morphing
     bool morphRegionCrossfade = morphEnabled &&
@@ -701,6 +713,26 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
         double wetB_val = (polesBSmooth_A * interp) + (polesBSmooth_B * (1.0 - interp));
         double morphAmount = (morphA * interp) + (morphB * (1.0 - interp));
 
+        double smoothedB = freqSmoothEnabled
+            ? ((freqA * interp) + (freqB * (1.0 - interp)))
+            : (double)B;
+
+        // Smooth clipFactor from smoothedB
+        double smoothedClipA = clipFactorA;
+        double smoothedClipB = clipFactorB;
+        if (freqSmoothEnabled) {
+            switch (filterTypeA) {
+                case Lowpass:  smoothedClipA = 1.212 - ((1.0 - smoothedB) * 0.496); break;
+                case Bandpass: smoothedClipA = 1.0 - ((1.0 - smoothedB) * 0.304); break;
+                default: break;
+            }
+            switch (filterTypeB) {
+                case Lowpass:  smoothedClipB = 1.212 - ((1.0 - smoothedB) * 0.496); break;
+                case Bandpass: smoothedClipB = 1.0 - ((1.0 - smoothedB) * 0.304); break;
+                default: break;
+            }
+        }
+
         if (inTrim != 1.0) {
             inputSampleL *= inTrim;
             inputSampleR *= inTrim;
@@ -711,8 +743,13 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
         if (inputSampleR > 1.0) inputSampleR = 1.0;
         if (inputSampleR < -1.0) inputSampleR = -1.0;
 
-        inputSampleL *= trim;
-        inputSampleR *= trim;
+        {
+            double trim = freqSmoothEnabled
+                ? (trimOld * interp + trimNew * (1.0 - interp))
+                : trimNew;
+            inputSampleL *= trim;
+            inputSampleR *= trim;
+        }
 
         // === DUAL LFO + MORPH LFO ===
         // LFO A
@@ -757,6 +794,14 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
                 for (int x = 0; x < 7; x++) { biquadD[x] = biquadC[x] = biquadB[x] = biquadA[x]; }
             }
         }
+        else if (freqSmoothEnabled && filterTypeA != Region)
+        {
+            // Frequency smoothing: per-sample coefficient recomputation
+            computePerSampleCoeffs(filterTypeA, smoothedB, biquadA);
+            if (!morphCoefficientBlend) {
+                for (int x = 0; x < 7; x++) { biquadD[x] = biquadC[x] = biquadB[x] = biquadA[x]; }
+            }
+        }
         else
         {
             // No LFO A modulation: per-block interpolation for Filter A
@@ -775,6 +820,14 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
             double modulatedBB = (double)B + lfoBVal * (double)lfoBActualDepth * 0.5;
             modulatedBB = juce::jlimit(0.0, 1.0, modulatedBB);
             computePerSampleCoeffs(filterTypeB, modulatedBB, biquadA2);
+            if (!morphCoefficientBlend) {
+                for (int x = 0; x < 7; x++) { biquadD2[x] = biquadC2[x] = biquadB2[x] = biquadA2[x]; }
+            }
+        }
+        else if (freqSmoothEnabled && filterTypeB != Region)
+        {
+            // Frequency smoothing: per-sample coefficient recomputation
+            computePerSampleCoeffs(filterTypeB, smoothedB, biquadA2);
             if (!morphCoefficientBlend) {
                 for (int x = 0; x < 7; x++) { biquadD2[x] = biquadC2[x] = biquadB2[x] = biquadA2[x]; }
             }
@@ -807,19 +860,19 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
             // Process chain A
             if (filterTypeA == Region) {
                 processRegion(outAL, outAR, dryAL, dryAR,
-                    biquadA, biquadB, biquadC, biquadD, biquadE, (double)B, (double)polesAParam);
+                    biquadA, biquadB, biquadC, biquadD, biquadE, smoothedB, (double)polesAParam);
             } else {
                 processStandard(outAL, outAR, dryAL, dryAR,
-                    biquadA, biquadB, biquadC, biquadD, clipFactorA, useClipA, wetA_val);
+                    biquadA, biquadB, biquadC, biquadD, smoothedClipA, useClipA, wetA_val);
             }
 
             // Process chain B
             if (filterTypeB == Region) {
                 processRegion(outBL, outBR, dryBL, dryBR,
-                    biquadA2, biquadB2, biquadC2, biquadD2, biquadE2, (double)B, (double)polesBParam);
+                    biquadA2, biquadB2, biquadC2, biquadD2, biquadE2, smoothedB, (double)polesBParam);
             } else {
                 processStandard(outBL, outBR, dryBL, dryBR,
-                    biquadA2, biquadB2, biquadC2, biquadD2, clipFactorB, useClipB, wetB_val);
+                    biquadA2, biquadB2, biquadC2, biquadD2, smoothedClipB, useClipB, wetB_val);
             }
 
             // Crossfade
@@ -846,7 +899,7 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
 
             // Interpolate poles along with morph
             double morphedPoles = wetA_val * (1.0 - m) + wetB_val * m;
-            double blendClip = clipFactorA * (1.0 - m) + clipFactorB * m;
+            double blendClip = smoothedClipA * (1.0 - m) + smoothedClipB * m;
             bool blendUseClip = useClipA || useClipB;
 
             processStandard(inputSampleL, inputSampleR, drySampleL, drySampleR,
@@ -872,19 +925,19 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
                     // Process Filter A
                     if (filterTypeA == Region) {
                         processRegion(outAL, outAR, dryAL, dryAR,
-                            biquadA, biquadB, biquadC, biquadD, biquadE, (double)B, (double)polesAParam);
+                            biquadA, biquadB, biquadC, biquadD, biquadE, smoothedB, (double)polesAParam);
                     } else {
                         processStandard(outAL, outAR, dryAL, dryAR,
-                            biquadA, biquadB, biquadC, biquadD, clipFactorA, useClipA, wetA_val);
+                            biquadA, biquadB, biquadC, biquadD, smoothedClipA, useClipA, wetA_val);
                     }
 
                     // Process Filter B
                     if (filterTypeB == Region) {
                         processRegion(outBL, outBR, dryBL, dryBR,
-                            biquadA2, biquadB2, biquadC2, biquadD2, biquadE2, (double)B, (double)polesBParam);
+                            biquadA2, biquadB2, biquadC2, biquadD2, biquadE2, smoothedB, (double)polesBParam);
                     } else {
                         processStandard(outBL, outBR, dryBL, dryBR,
-                            biquadA2, biquadB2, biquadC2, biquadD2, clipFactorB, useClipB, wetB_val);
+                            biquadA2, biquadB2, biquadC2, biquadD2, smoothedClipB, useClipB, wetB_val);
                     }
 
                     // Average
@@ -899,20 +952,20 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
                     // Filter A
                     if (filterTypeA == Region) {
                         processRegion(inputSampleL, inputSampleR, dryL, dryR,
-                            biquadA, biquadB, biquadC, biquadD, biquadE, (double)B, (double)polesAParam);
+                            biquadA, biquadB, biquadC, biquadD, biquadE, smoothedB, (double)polesAParam);
                     } else {
                         processStandard(inputSampleL, inputSampleR, dryL, dryR,
-                            biquadA, biquadB, biquadC, biquadD, clipFactorA, useClipA, wetA_val);
+                            biquadA, biquadB, biquadC, biquadD, smoothedClipA, useClipA, wetA_val);
                     }
 
                     // Filter B (processes output of A)
                     dryL = inputSampleL; dryR = inputSampleR;
                     if (filterTypeB == Region) {
                         processRegion(inputSampleL, inputSampleR, dryL, dryR,
-                            biquadA2, biquadB2, biquadC2, biquadD2, biquadE2, (double)B, (double)polesBParam);
+                            biquadA2, biquadB2, biquadC2, biquadD2, biquadE2, smoothedB, (double)polesBParam);
                     } else {
                         processStandard(inputSampleL, inputSampleR, dryL, dryR,
-                            biquadA2, biquadB2, biquadC2, biquadD2, clipFactorB, useClipB, wetB_val);
+                            biquadA2, biquadB2, biquadC2, biquadD2, smoothedClipB, useClipB, wetB_val);
                     }
                 }
             }
@@ -921,10 +974,10 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
                 // Only Filter A
                 if (filterTypeA == Region) {
                     processRegion(inputSampleL, inputSampleR, drySampleL, drySampleR,
-                        biquadA, biquadB, biquadC, biquadD, biquadE, (double)B, (double)polesAParam);
+                        biquadA, biquadB, biquadC, biquadD, biquadE, smoothedB, (double)polesAParam);
                 } else {
                     processStandard(inputSampleL, inputSampleR, drySampleL, drySampleR,
-                        biquadA, biquadB, biquadC, biquadD, clipFactorA, useClipA, wetA_val);
+                        biquadA, biquadB, biquadC, biquadD, smoothedClipA, useClipA, wetA_val);
                 }
             }
             else if (bOn)
@@ -932,10 +985,10 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
                 // Only Filter B
                 if (filterTypeB == Region) {
                     processRegion(inputSampleL, inputSampleR, drySampleL, drySampleR,
-                        biquadA2, biquadB2, biquadC2, biquadD2, biquadE2, (double)B, (double)polesBParam);
+                        biquadA2, biquadB2, biquadC2, biquadD2, biquadE2, smoothedB, (double)polesBParam);
                 } else {
                     processStandard(inputSampleL, inputSampleR, drySampleL, drySampleR,
-                        biquadA2, biquadB2, biquadC2, biquadD2, clipFactorB, useClipB, wetB_val);
+                        biquadA2, biquadB2, biquadC2, biquadD2, smoothedClipB, useClipB, wetB_val);
                 }
             }
             // else: neither filter on — signal passes through unfiltered

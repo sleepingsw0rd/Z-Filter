@@ -288,6 +288,8 @@ private:
     LEDComponent zOutLED;
     RoundButtonComponent bypassBtn;
     LEDComponent bypassLED;
+    RoundButtonComponent freqSmoothBtn;
+    LEDComponent freqSmoothLED;
 
     // Parameter attachments
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> frequencyAttachment;

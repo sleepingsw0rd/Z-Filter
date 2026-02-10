@@ -117,6 +117,9 @@ private:
     double polesASmooth_A = 0.0, polesASmooth_B = 0.0;
     double polesBSmooth_A = 0.0, polesBSmooth_B = 0.0;
 
+    // Frequency smoothing state
+    double freqA = 0.5, freqB = 0.5;
+
     // Dither state
     uint32_t fpdL = 1, fpdR = 1;
 
