@@ -251,6 +251,8 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
                 break;
             case Notch:
                 bqA[biq_freq] = ((pow(B_val, 3) * 4700.0) / sr) + 0.0009963;
+                outClipFactor = 0.91 - ((1.0 - B_val) * 0.15);
+                outUseClip = true;
                 bqA[biq_reso] = 0.618;
                 break;
             case Region:
@@ -724,11 +726,13 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
             switch (filterTypeA) {
                 case Lowpass:  smoothedClipA = 1.212 - ((1.0 - smoothedB) * 0.496); break;
                 case Bandpass: smoothedClipA = 1.0 - ((1.0 - smoothedB) * 0.304); break;
+                case Notch:    smoothedClipA = 0.91 - ((1.0 - smoothedB) * 0.15); break;
                 default: break;
             }
             switch (filterTypeB) {
                 case Lowpass:  smoothedClipB = 1.212 - ((1.0 - smoothedB) * 0.496); break;
                 case Bandpass: smoothedClipB = 1.0 - ((1.0 - smoothedB) * 0.304); break;
+                case Notch:    smoothedClipB = 0.91 - ((1.0 - smoothedB) * 0.15); break;
                 default: break;
             }
         }
