@@ -27,7 +27,7 @@ Drop into your VST3 folder (typically `C:\Program Files\Common Files\VST3\`) and
 - **Dot-Matrix LCD Display**: Real-time parameter readout in an HD44780-style display
 - **Dry/Wet Mix**: Blend filtered and dry signals
 - **Bypass**: Full signal bypass with LED indicator
-- **Per-Sample Coefficient Smoothing**: Click-free parameter automation
+- **Freq Smooth Mode**: Per-sample coefficient recomputation for click-free frequency automation
 
 ## Controls
 
@@ -49,6 +49,7 @@ Drop into your VST3 folder (typically `C:\Program Files\Common Files\VST3\`) and
 | **Res** | Filter resonance / cascade depth | 1 stage (gentle) to 4 stages (steep) |
 | **Level** | Post-filter output gain | 0 to +20dB |
 | **Mix** | Dry/wet blend | 0% (dry) to 100% (wet) |
+| **Smooth** | Enable freq smooth mode for click-free frequency automation | On/Off |
 
 ## Building
 
