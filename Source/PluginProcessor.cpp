@@ -42,6 +42,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout ZFilterMiniProcessor::create
     params.push_back(std::make_unique<juce::AudioParameterBool>(
         juce::ParameterID("bypass", 1), "Bypass", false));
 
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("freqSmooth", 1), "Freq Smooth", false));
+
     return { params.begin(), params.end() };
 }
 
@@ -72,6 +75,7 @@ void ZFilterMiniProcessor::prepareToPlay(double, int)
     outTrimA = outTrimB = 0.0;
     wetA = wetB = 0.0;
     mixA = mixB = 0.0;
+    freqA = freqB = 0.5;
 
     fpdL = 1; while (fpdL < 16386) fpdL = (uint32_t)rand() * (uint32_t)UINT32_MAX;
     fpdR = 1; while (fpdR < 16386) fpdR = (uint32_t)rand() * (uint32_t)UINT32_MAX;
@@ -101,11 +105,15 @@ void ZFilterMiniProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
     // Read parameters
     const int filterType = (int)*apvts.getRawParameterValue("filterType");
     const bool bypassed = *apvts.getRawParameterValue("bypass") > 0.5f;
+    const bool freqSmoothEnabled = *apvts.getRawParameterValue("freqSmooth") > 0.5f;
     const float mixParam = *apvts.getRawParameterValue("mix");
     const float A = *apvts.getRawParameterValue("input");
     const float B = *apvts.getRawParameterValue("frequency");
     const float C = *apvts.getRawParameterValue("output");
     const float D = *apvts.getRawParameterValue("poles");
+
+    freqA = freqB;
+    freqB = (double)B;
 
     if (bypassed)
         return;
@@ -117,6 +125,9 @@ void ZFilterMiniProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
     double overallscale = 1.0;
     overallscale /= 44100.0;
     overallscale *= sr;
+
+    // Save previous biq_freq for trim smoothing
+    double prevBiqFreqA = biquadA[biq_freq];
 
     // Compute biquad coefficients
     double clipFactor = 1.0;
@@ -202,7 +213,47 @@ void ZFilterMiniProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
     fixA[fix_b1] = fixB[fix_b1] = 2.0 * (K * K - 1.0) * norm;
     fixA[fix_b2] = fixB[fix_b2] = (1.0 - K / fixB[fix_reso] + K * K) * norm;
 
-    double trim = 0.1 + (3.712 * biquadA[biq_freq]);
+    double trimOld = 0.1 + (3.712 * prevBiqFreqA);
+    double trimNew = 0.1 + (3.712 * biquadA[biq_freq]);
+
+    // Helper: compute per-sample coefficients for frequency smoothing
+    auto computePerSampleCoeffs = [&](int type, double modB, double* bqA_arr) {
+        double modFreq;
+        switch (type) {
+            case Lowpass:  modFreq = ((pow(modB, 3) * 18930.0) / sr) + 0.00162; break;
+            case Highpass: modFreq = ((pow(modB, 4) * 9500.0) / sr) + 0.00076; break;
+            case Bandpass: modFreq = ((pow(modB, 4) * 14300.0) / sr) + 0.00079; break;
+            case Notch:    modFreq = ((pow(modB, 3) * 4700.0) / sr) + 0.0009963; break;
+            default:       modFreq = bqA_arr[biq_freq]; break;
+        }
+        double Km = tan(juce::MathConstants<double>::pi * modFreq);
+        double normm = 1.0 / (1.0 + Km / bqA_arr[biq_reso] + Km * Km);
+        switch (type) {
+            case Lowpass:
+                bqA_arr[biq_a0] = Km * Km * normm;
+                bqA_arr[biq_a1] = 2.0 * bqA_arr[biq_a0];
+                bqA_arr[biq_a2] = bqA_arr[biq_a0];
+                break;
+            case Highpass:
+                bqA_arr[biq_a0] = normm;
+                bqA_arr[biq_a1] = -2.0 * bqA_arr[biq_a0];
+                bqA_arr[biq_a2] = bqA_arr[biq_a0];
+                break;
+            case Bandpass:
+                bqA_arr[biq_a0] = Km / bqA_arr[biq_reso] * normm;
+                bqA_arr[biq_a1] = 0.0;
+                bqA_arr[biq_a2] = -bqA_arr[biq_a0];
+                break;
+            case Notch:
+                bqA_arr[biq_a0] = (1.0 + Km * Km) * normm;
+                bqA_arr[biq_a1] = 2.0 * (Km * Km - 1.0) * normm;
+                bqA_arr[biq_a2] = bqA_arr[biq_a0];
+                break;
+            default: break;
+        }
+        bqA_arr[biq_b1] = 2.0 * (Km * Km - 1.0) * normm;
+        bqA_arr[biq_b2] = (1.0 - Km / bqA_arr[biq_reso] + Km * Km) * normm;
+    };
 
     // Get channel pointers
     float* channelL = buffer.getWritePointer(0);
@@ -227,6 +278,19 @@ void ZFilterMiniProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
         double outTrim = (outTrimA * interp) + (outTrimB * (1.0 - interp));
         double wet = (wetA * interp) + (wetB * (1.0 - interp));
 
+        double smoothedB = freqSmoothEnabled
+            ? ((freqA * interp) + (freqB * (1.0 - interp)))
+            : (double)B;
+
+        double smoothedClipFactor = clipFactor;
+        if (freqSmoothEnabled) {
+            switch (filterType) {
+                case Lowpass:  smoothedClipFactor = 1.212 - ((1.0 - smoothedB) * 0.496); break;
+                case Bandpass: smoothedClipFactor = 1.0 - ((1.0 - smoothedB) * 0.304); break;
+                default: break;
+            }
+        }
+
         // Input trim + hard clip
         double inTrim = (inTrimA * interp) + (inTrimB * (1.0 - interp));
         inputSampleL *= inTrim;
@@ -237,18 +301,25 @@ void ZFilterMiniProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
         if (inputSampleR > 1.0) inputSampleR = 1.0;
         if (inputSampleR < -1.0) inputSampleR = -1.0;
 
+        double trim = freqSmoothEnabled
+            ? (trimOld * interp + trimNew * (1.0 - interp))
+            : trimNew;
         inputSampleL *= trim;
         inputSampleR *= trim;
 
-        // Per-block biquad coefficient interpolation
-        biquadA[biq_a0] = (biquadA[biq_aA0] * interp) + (biquadA[biq_aB0] * (1.0 - interp));
-        biquadA[biq_a1] = (biquadA[biq_aA1] * interp) + (biquadA[biq_aB1] * (1.0 - interp));
-        biquadA[biq_a2] = (biquadA[biq_aA2] * interp) + (biquadA[biq_aB2] * (1.0 - interp));
-        biquadA[biq_b1] = (biquadA[biq_bA1] * interp) + (biquadA[biq_bB1] * (1.0 - interp));
-        biquadA[biq_b2] = (biquadA[biq_bA2] * interp) + (biquadA[biq_bB2] * (1.0 - interp));
-
-        // Copy coefficients to cascade stages B, C, D
-        for (int x = 0; x < 7; x++) { biquadD[x] = biquadC[x] = biquadB[x] = biquadA[x]; }
+        if (freqSmoothEnabled) {
+            computePerSampleCoeffs(filterType, smoothedB, biquadA);
+            for (int x = 0; x < 7; x++) { biquadD[x] = biquadC[x] = biquadB[x] = biquadA[x]; }
+        } else {
+            // Per-block biquad coefficient interpolation (original code)
+            biquadA[biq_a0] = (biquadA[biq_aA0] * interp) + (biquadA[biq_aB0] * (1.0 - interp));
+            biquadA[biq_a1] = (biquadA[biq_aA1] * interp) + (biquadA[biq_aB1] * (1.0 - interp));
+            biquadA[biq_a2] = (biquadA[biq_aA2] * interp) + (biquadA[biq_aB2] * (1.0 - interp));
+            biquadA[biq_b1] = (biquadA[biq_bA1] * interp) + (biquadA[biq_bB1] * (1.0 - interp));
+            biquadA[biq_b2] = (biquadA[biq_bA2] * interp) + (biquadA[biq_bB2] * (1.0 - interp));
+            // Copy coefficients to cascade stages B, C, D
+            for (int x = 0; x < 7; x++) { biquadD[x] = biquadC[x] = biquadB[x] = biquadA[x]; }
+        }
 
         // Compute first-stage wet for overall dry blend
         double aWet = 1.0;
@@ -265,7 +336,7 @@ void ZFilterMiniProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
             double outSmp;
 
             // Stage A
-            if (useClip) { inputSampleL /= clipFactor; inputSampleR /= clipFactor; }
+            if (useClip) { inputSampleL /= smoothedClipFactor; inputSampleR /= smoothedClipFactor; }
             outSmp = (inputSampleL * biquadA[biq_a0]) + biquadA[biq_sL1];
             if (outSmp > 1.0) outSmp = 1.0; if (outSmp < -1.0) outSmp = -1.0;
             biquadA[biq_sL1] = (inputSampleL * biquadA[biq_a1]) - (outSmp * biquadA[biq_b1]) + biquadA[biq_sL2];
@@ -280,7 +351,7 @@ void ZFilterMiniProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
 
             // Stage B
             if (bWet > 0.0) {
-                if (useClip) { inputSampleL /= clipFactor; inputSampleR /= clipFactor; }
+                if (useClip) { inputSampleL /= smoothedClipFactor; inputSampleR /= smoothedClipFactor; }
                 outSmp = (inputSampleL * biquadB[biq_a0]) + biquadB[biq_sL1];
                 if (outSmp > 1.0) outSmp = 1.0; if (outSmp < -1.0) outSmp = -1.0;
                 biquadB[biq_sL1] = (inputSampleL * biquadB[biq_a1]) - (outSmp * biquadB[biq_b1]) + biquadB[biq_sL2];
@@ -296,7 +367,7 @@ void ZFilterMiniProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
 
             // Stage C
             if (cWet > 0.0) {
-                if (useClip) { inputSampleL /= clipFactor; inputSampleR /= clipFactor; }
+                if (useClip) { inputSampleL /= smoothedClipFactor; inputSampleR /= smoothedClipFactor; }
                 outSmp = (inputSampleL * biquadC[biq_a0]) + biquadC[biq_sL1];
                 if (outSmp > 1.0) outSmp = 1.0; if (outSmp < -1.0) outSmp = -1.0;
                 biquadC[biq_sL1] = (inputSampleL * biquadC[biq_a1]) - (outSmp * biquadC[biq_b1]) + biquadC[biq_sL2];
@@ -312,7 +383,7 @@ void ZFilterMiniProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
 
             // Stage D
             if (dWet > 0.0) {
-                if (useClip) { inputSampleL /= clipFactor; inputSampleR /= clipFactor; }
+                if (useClip) { inputSampleL /= smoothedClipFactor; inputSampleR /= smoothedClipFactor; }
                 outSmp = (inputSampleL * biquadD[biq_a0]) + biquadD[biq_sL1];
                 if (outSmp > 1.0) outSmp = 1.0; if (outSmp < -1.0) outSmp = -1.0;
                 biquadD[biq_sL1] = (inputSampleL * biquadD[biq_a1]) - (outSmp * biquadD[biq_b1]) + biquadD[biq_sL2];
@@ -326,7 +397,7 @@ void ZFilterMiniProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
                 drySampleR = inputSampleR = (outSmp * dWet) + (drySampleR * (1.0 - dWet));
             }
 
-            if (useClip) { inputSampleL /= clipFactor; inputSampleR /= clipFactor; }
+            if (useClip) { inputSampleL /= smoothedClipFactor; inputSampleR /= smoothedClipFactor; }
         }
 
         // === processOpamp: DC block + 2x lowpass + soft clip + output gain ===

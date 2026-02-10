@@ -246,11 +246,15 @@ private:
     RoundButtonComponent bpBtn;
     RoundButtonComponent ntBtn;
 
+    // Freq smooth
+    RoundButtonComponent freqSmoothBtn;
+
     // LEDs
     LEDComponent lpLED;
     LEDComponent hpLED;
     LEDComponent bpLED;
     LEDComponent ntLED;
+    LEDComponent freqSmoothLED;
 
     // Parameter attachments
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> frequencyAttachment;

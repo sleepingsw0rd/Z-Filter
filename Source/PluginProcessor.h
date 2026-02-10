@@ -75,6 +75,9 @@ private:
     double wetA = 0.0, wetB = 0.0;
     double mixA = 0.0, mixB = 0.0;
 
+    // Frequency smoothing state
+    double freqA = 0.5, freqB = 0.5;
+
     // Dither state
     uint32_t fpdL = 1, fpdR = 1;
 
