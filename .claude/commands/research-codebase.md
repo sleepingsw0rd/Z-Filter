@@ -157,8 +157,6 @@ Then wait for the user's research query.
        - Use **codebase-locator** to find newly mentioned files or components
        - Use **codebase-analyzer** to understand implementation details from user's answers
        - Use **codebase-pattern-finder** to find examples of patterns the user described
-       - Use **thoughts-locator** to find historical context about mentioned decisions
-       - Use **thoughts-analyzer** to extract insights from relevant historical documents
      - Read any newly mentioned files FULLY (no limit/offset) in the main context
      - Verify user's answers against actual codebase findings from sub-agents
      - Cross-reference user's explanations with live code to ensure accuracy

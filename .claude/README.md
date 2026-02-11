@@ -69,6 +69,9 @@ After running the automated setup, verify and manually configure:
 - **codebase-pattern-finder**: Finds similar implementations and design patterns
 - **test-runner**: Executes tests and reports results
 - **web-search-researcher**: Performs web research for technical questions
+- **z-filter-agent**: Z-Filter (Main) variant implementation specialist — use for changes on the `main` branch
+- **z-filter-xl-agent**: Z-Filter XL variant implementation specialist — use for changes on the `v2-xl` branch
+- **z-filter-mini-agent**: Z-Filter Mini variant implementation specialist — use for changes on the `mini` branch
 
 ## Commands Overview
 
@@ -94,6 +97,18 @@ After running the automated setup, verify and manually configure:
 - Create plans with `/create-plan` before starting complex features
 - Use `/research-codebase` to understand existing implementations
 - Run test-runner agent before requesting code reviews
+
+## Variant Agent System
+
+The Z-Filter project has three variant-specific agents that work with the `/implement-plan` command:
+
+| Agent | Branch | Variant | Hierarchy |
+|-------|--------|---------|-----------|
+| `z-filter-agent` | `main` | Z-Filter (15 params) | Primary |
+| `z-filter-xl-agent` | `v2-xl` | Z-FilterXL (24 params) | Second |
+| `z-filter-mini-agent` | `mini` | Z-FilterMini (7 params) | Third |
+
+When `/implement-plan` detects a multi-variant plan, it executes agents sequentially in hierarchy order: Main → XL → Mini. The Main agent's implementation serves as the reference that XL and Mini adapt from.
 
 ## Customization
 

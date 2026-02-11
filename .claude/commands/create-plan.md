@@ -373,10 +373,10 @@ last_updated_by: Claude
 
 1. **Automated Verification** (can be run by execution agents):
 
-   - Commands that can be run: `pytest application/tests/`, `flake8 application/`, etc.
+   - Commands that can be run: `cmake -B build -S .`, `cmake --build build --config Release`, etc.
    - Specific files that should exist
-   - Code compilation/type checking
-   - Automated test suites
+   - Code compilation with no warnings
+   - Both VST3 and Standalone targets build successfully
 
 2. **Manual Verification** (requires human testing):
    - UI/UX functionality
@@ -406,28 +406,27 @@ last_updated_by: Claude
 
 ## Common Patterns
 
-### For Database Changes:
+### For New DSP Features:
 
-- Start with schema/migration
-- Add store methods
-- Update business logic
-- Expose via API
-- Update clients
+- Research existing filter/processing patterns in PluginProcessor.cpp
+- Add parameters to APVTS layout in createParameterLayout()
+- Implement DSP logic in processBlock()
+- Add GUI controls in PluginEditor (knobs, buttons, LEDs)
+- Wire up APVTS attachments and update LCD display
 
-### For New Features:
+### For GUI Changes:
 
-- Research existing patterns first
-- Start with data model
-- Build backend logic
-- Add API endpoints
-- Implement UI last
+- Add component declarations in PluginEditor.h
+- Create and position components in constructor and resized()
+- Add APVTS attachments for parameter binding
+- Update updateDisplay() for LCD/LED feedback
+- Update paint() for labels and section headers
 
 ### For Refactoring:
 
 - Document current behavior
 - Plan incremental changes
-- Maintain backwards compatibility
-- Include migration strategy
+- Verify build after each phase
 
 ## Sub-task Spawning Best Practices
 
