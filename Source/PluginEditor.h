@@ -185,6 +185,69 @@ private:
 };
 
 //==============================================================================
+// Circle button with embedded LED glow
+//==============================================================================
+class CircleButtonComponent : public juce::Component
+{
+public:
+    CircleButtonComponent() = default;
+
+    std::function<void()> onClick;
+
+    void paint(juce::Graphics& g) override
+    {
+        auto bounds = getLocalBounds().toFloat();
+        float diameter = juce::jmin(bounds.getWidth(), bounds.getHeight());
+        float radius = diameter * 0.5f;
+        auto centre = bounds.getCentre();
+
+        // Drop shadow
+        g.setColour(juce::Colour(0x40000000));
+        g.fillEllipse(centre.x - radius, centre.y - radius + 1.5f, diameter, diameter);
+
+        // Black circle body
+        g.setColour(juce::Colour(0xff1a1a1a));
+        g.fillEllipse(centre.x - radius, centre.y - radius, diameter, diameter);
+
+        // Subtle ring border
+        g.setColour(juce::Colour(0xff3a3a3a));
+        g.drawEllipse(centre.x - radius + 0.5f, centre.y - radius + 0.5f,
+                      diameter - 1.0f, diameter - 1.0f, 1.0f);
+
+        // LED glow in center when active
+        if (active)
+        {
+            float glowR = radius * 0.45f;
+            // Outer glow
+            g.setColour(juce::Colour(0x40ff2020));
+            g.fillEllipse(centre.x - glowR * 1.5f, centre.y - glowR * 1.5f,
+                          glowR * 3.0f, glowR * 3.0f);
+            // Inner bright dot
+            g.setColour(juce::Colour(0xffff3030));
+            g.fillEllipse(centre.x - glowR, centre.y - glowR,
+                          glowR * 2.0f, glowR * 2.0f);
+        }
+    }
+
+    void mouseDown(const juce::MouseEvent&) override { pressed = true; repaint(); }
+    void mouseUp(const juce::MouseEvent& e) override
+    {
+        pressed = false;
+        repaint();
+        if (onClick && getLocalBounds().contains(e.getPosition()))
+            onClick();
+    }
+
+    void setActive(bool a) { if (active != a) { active = a; repaint(); } }
+    bool isActive() const { return active; }
+
+private:
+    bool active = false;
+    bool pressed = false;
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CircleButtonComponent)
+};
+
+//==============================================================================
 // Dot-matrix LCD display (HD44780 style)
 //==============================================================================
 class DotMatrixLCD : public juce::Component
@@ -288,8 +351,9 @@ private:
     LEDComponent zOutLED;
     RoundButtonComponent bypassBtn;
     LEDComponent bypassLED;
-    RoundButtonComponent freqSmoothBtn;
-    LEDComponent freqSmoothLED;
+    CircleButtonComponent smooth1Btn;   // freqSmooth (Sm1)
+    CircleButtonComponent smooth2Btn;   // morphSmooth2 - parameter-space (Sm2)
+    CircleButtonComponent smooth3Btn;   // morphSmooth3 - ARMAdillo (Sm3)
 
     // Parameter attachments
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> frequencyAttachment;
