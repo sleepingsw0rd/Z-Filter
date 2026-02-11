@@ -584,9 +584,9 @@ void ZFilterEditor::paint(juce::Graphics& g)
     g.drawText("Level",   964, labelY, 50, 14, juce::Justification::centred);
     g.drawText("Mix",    1021, labelY, 50, 14, juce::Justification::centred);
     g.setFont(juce::Font(9.0f));
-    g.drawText("Sm1", 1115, 267, 30, 10, juce::Justification::centredLeft);
-    g.drawText("Sm2", 1115, 291, 30, 10, juce::Justification::centredLeft);
-    g.drawText("Sm3", 1115, 315, 30, 10, juce::Justification::centredLeft);
+    g.drawText("Sm1", 1115, 247, 30, 10, juce::Justification::centredLeft);
+    g.drawText("Sm2", 1115, 271, 30, 10, juce::Justification::centredLeft);
+    g.drawText("Sm3", 1115, 295, 30, 10, juce::Justification::centredLeft);
 }
 
 void ZFilterEditor::resized()
@@ -655,7 +655,7 @@ void ZFilterEditor::resized()
     mixKnob.setBounds(1027, knobY, 38, 38);
 
     // Smooth buttons (stacked vertically at x=1093, 20x20 each, 4px gap)
-    smooth1Btn.setBounds(1093, 262, 20, 20);
-    smooth2Btn.setBounds(1093, 286, 20, 20);
-    smooth3Btn.setBounds(1093, 310, 20, 20);
+    smooth1Btn.setBounds(1093, 242, 20, 20);
+    smooth2Btn.setBounds(1093, 266, 20, 20);
+    smooth3Btn.setBounds(1093, 290, 20, 20);
 }
