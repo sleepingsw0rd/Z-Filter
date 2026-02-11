@@ -421,7 +421,7 @@ void ZFilterMiniEditor::paint(juce::Graphics& g)
     g.drawText("Poles", lx(5), labelY, labelW, 14, juce::Justification::centred);
     g.drawText("Level", lx(6), labelY, labelW, 14, juce::Justification::centred);
     g.drawText("Mix",   lx(7), labelY, labelW, 14, juce::Justification::centred);
-    g.drawText("Smth",  lx(8), labelY, labelW, 14, juce::Justification::centred);
+    g.drawText("Smth",  668, 260, 50, 14, juce::Justification::centredLeft);
 }
 
 void ZFilterMiniEditor::resized()
