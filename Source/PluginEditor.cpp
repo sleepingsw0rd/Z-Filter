@@ -662,9 +662,9 @@ void ZFilterEditor::paint(juce::Graphics& g)
     g.drawText("ZOut",   975, rowALblY, 36, 12, juce::Justification::centred);
     g.drawText("Byp",  1040, rowALblY, 36, 12, juce::Justification::centred);
     g.setFont(juce::Font(9.0f));
-    g.drawText("Sm1", 1105, 283, 30, 10, juce::Justification::centred);
-    g.drawText("Sm2", 1105, 307, 30, 10, juce::Justification::centred);
-    g.drawText("Sm3", 1105, 331, 30, 10, juce::Justification::centred);
+    g.drawText("Sm1", 1135, 267, 30, 10, juce::Justification::centredLeft);
+    g.drawText("Sm2", 1135, 291, 30, 10, juce::Justification::centredLeft);
+    g.drawText("Sm3", 1135, 315, 30, 10, juce::Justification::centredLeft);
     g.setFont(juce::Font(10.0f));
     // Knob labels (row B)
     g.drawText("Input",  952, rowBLblY, 34, 12, juce::Justification::centred);
