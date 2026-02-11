@@ -584,9 +584,9 @@ void ZFilterEditor::paint(juce::Graphics& g)
     g.drawText("Level",   964, labelY, 50, 14, juce::Justification::centred);
     g.drawText("Mix",    1021, labelY, 50, 14, juce::Justification::centred);
     g.setFont(juce::Font(9.0f));
-    g.drawText("Sm1", 1085, 283, 30, 10, juce::Justification::centred);
-    g.drawText("Sm2", 1085, 307, 30, 10, juce::Justification::centred);
-    g.drawText("Sm3", 1085, 331, 30, 10, juce::Justification::centred);
+    g.drawText("Sm1", 1115, 267, 30, 10, juce::Justification::centredLeft);
+    g.drawText("Sm2", 1115, 291, 30, 10, juce::Justification::centredLeft);
+    g.drawText("Sm3", 1115, 315, 30, 10, juce::Justification::centredLeft);
 }
 
 void ZFilterEditor::resized()
