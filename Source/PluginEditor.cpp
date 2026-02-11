@@ -317,7 +317,9 @@ ZFilterEditor::ZFilterEditor(ZFilterProcessor& p)
     addBtn(filterABtn);
     addBtn(filterBBtn);
     addBtn(lfoTargetBtn);
-    addBtn(freqSmoothBtn);
+    addAndMakeVisible(smooth1Btn);
+    addAndMakeVisible(smooth2Btn);
+    addAndMakeVisible(smooth3Btn);
 
     // LEDs
     addAndMakeVisible(bypassLED);
@@ -331,7 +333,6 @@ ZFilterEditor::ZFilterEditor(ZFilterProcessor& p)
     addAndMakeVisible(filterALED);
     addAndMakeVisible(filterBLED);
     addAndMakeVisible(lfoTargetLED);
-    addAndMakeVisible(freqSmoothLED);
 
     // Button callbacks
     bypassBtn.onClick = [this]() {
@@ -387,9 +388,29 @@ ZFilterEditor::ZFilterEditor(ZFilterProcessor& p)
         param->setValueNotifyingHost((float)next / 2.0f);
     };
 
-    freqSmoothBtn.onClick = [this]() {
+    smooth1Btn.onClick = [this]() {
         auto* param = processorRef.apvts.getParameter("freqSmooth");
         param->setValueNotifyingHost(param->getValue() < 0.5f ? 1.0f : 0.0f);
+    };
+    smooth2Btn.onClick = [this]() {
+        auto* p2 = processorRef.apvts.getParameter("morphSmooth2");
+        auto* p3 = processorRef.apvts.getParameter("morphSmooth3");
+        if (p2->getValue() < 0.5f) {
+            p2->setValueNotifyingHost(1.0f);
+            p3->setValueNotifyingHost(0.0f);
+        } else {
+            p2->setValueNotifyingHost(0.0f);
+        }
+    };
+    smooth3Btn.onClick = [this]() {
+        auto* p2 = processorRef.apvts.getParameter("morphSmooth2");
+        auto* p3 = processorRef.apvts.getParameter("morphSmooth3");
+        if (p3->getValue() < 0.5f) {
+            p3->setValueNotifyingHost(1.0f);
+            p2->setValueNotifyingHost(0.0f);
+        } else {
+            p3->setValueNotifyingHost(0.0f);
+        }
     };
 
     // Parameter attachments
@@ -454,11 +475,19 @@ void ZFilterEditor::updateDisplay()
     if (morphOn) {
         juce::String tA = (filterTypeA >= 0 && filterTypeA <= 3) ? typeShort[filterTypeA] : "LP";
         juce::String tB = (filterTypeB >= 0 && filterTypeB <= 3) ? typeShort[filterTypeB] : "BP";
-        row0 = "Z-FILTER MORPH " + tA + ">" + tB + (zOut ? " ZOUT" : "") + (freqSmooth ? " SM" : "");
+        row0 = "Z-FILTER MORPH " + tA + ">" + tB;
+        if (zOut) row0 += " ZOUT";
+        if (freqSmooth) row0 += " SM1";
+        if (*processorRef.apvts.getRawParameterValue("morphSmooth2") > 0.5f) row0 += " SM2";
+        if (*processorRef.apvts.getRawParameterValue("morphSmooth3") > 0.5f) row0 += " SM3";
         row2 = "MORPH:" + juce::String(morph * 100.0f, 0) + "% RES:" + juce::String(reso * 100.0f, 0) + "%";
     } else {
         juce::String typeName = (filterTypeA >= 0 && filterTypeA <= 3) ? typeNames[filterTypeA] : "LOWPASS";
-        row0 = "Z-FILTER " + typeName + (zOut ? " ZOUT" : "") + (freqSmooth ? " SM" : "");
+        row0 = "Z-FILTER " + typeName;
+        if (zOut) row0 += " ZOUT";
+        if (freqSmooth) row0 += " SM1";
+        if (*processorRef.apvts.getRawParameterValue("morphSmooth2") > 0.5f) row0 += " SM2";
+        if (*processorRef.apvts.getRawParameterValue("morphSmooth3") > 0.5f) row0 += " SM3";
         row2 = "IN:" + juce::String(input * 100.0f, 0) + "% RES:" + juce::String(reso * 100.0f, 0) + "%";
     }
 
@@ -504,7 +533,9 @@ void ZFilterEditor::updateDisplay()
     filterALED.setActive(morphOn);
     filterBLED.setActive(morphOn);
     lfoTargetLED.setActive(lfoTgt > 0);
-    freqSmoothLED.setActive(freqSmooth);
+    smooth1Btn.setActive(freqSmooth);
+    smooth2Btn.setActive(*processorRef.apvts.getRawParameterValue("morphSmooth2") > 0.5f);
+    smooth3Btn.setActive(*processorRef.apvts.getRawParameterValue("morphSmooth3") > 0.5f);
 
     repaint();
 }
@@ -552,7 +583,10 @@ void ZFilterEditor::paint(juce::Graphics& g)
     g.drawText("Poles",   907, labelY, 50, 14, juce::Justification::centred);
     g.drawText("Level",   964, labelY, 50, 14, juce::Justification::centred);
     g.drawText("Mix",    1021, labelY, 50, 14, juce::Justification::centred);
-    g.drawText("Smooth", 1078, labelY, 50, 14, juce::Justification::centred);
+    g.setFont(juce::Font(9.0f));
+    g.drawText("Sm1", 1085, 283, 30, 10, juce::Justification::centred);
+    g.drawText("Sm2", 1085, 307, 30, 10, juce::Justification::centred);
+    g.drawText("Sm3", 1085, 331, 30, 10, juce::Justification::centred);
 }
 
 void ZFilterEditor::resized()
@@ -620,7 +654,8 @@ void ZFilterEditor::resized()
     outputKnob.setBounds(970, knobY, 38, 38);
     mixKnob.setBounds(1027, knobY, 38, 38);
 
-    // Freq Smooth (center=1103)
-    freqSmoothBtn.setBounds(1083, btnY, 40, 24);
-    freqSmoothLED.setBounds(1098, ledY, 10, 10);
+    // Smooth buttons (stacked vertically at x=1093, 20x20 each, 4px gap)
+    smooth1Btn.setBounds(1093, 262, 20, 20);
+    smooth2Btn.setBounds(1093, 286, 20, 20);
+    smooth3Btn.setBounds(1093, 310, 20, 20);
 }

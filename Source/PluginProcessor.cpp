@@ -80,6 +80,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout ZFilterProcessor::createPara
     params.push_back(std::make_unique<juce::AudioParameterBool>(
         juce::ParameterID("freqSmooth", 1), "Freq Smooth", false));
 
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("morphSmooth2", 2), "Morph Smooth 2", false));
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("morphSmooth3", 2), "Morph Smooth 3", false));
+
     return { params.begin(), params.end() };
 }
 
@@ -164,6 +169,8 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
     const float lfoDepth = *apvts.getRawParameterValue("lfoDepth");
     const bool lfoSyncEnabled = *apvts.getRawParameterValue("lfoSync") > 0.5f;
     const bool freqSmoothEnabled = *apvts.getRawParameterValue("freqSmooth") > 0.5f;
+    const bool morphSmooth2 = *apvts.getRawParameterValue("morphSmooth2") > 0.5f;
+    const bool morphSmooth3 = *apvts.getRawParameterValue("morphSmooth3") > 0.5f;
 
     // Morph smoothing
     morphA = morphB;
@@ -644,19 +651,84 @@ void ZFilterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
         // === MORPH PROCESSING ===
         if (morphCoefficientBlend && modulatedMorph > 0.0)
         {
-            // Coefficient blend mode: interpolate working coefficients between A and B
             double m = modulatedMorph;
 
-            // Blend coefficients
-            double blendA0 = biquadA[biq_a0] * (1.0 - m) + biquadA2[biq_a0] * m;
-            double blendA1 = biquadA[biq_a1] * (1.0 - m) + biquadA2[biq_a1] * m;
-            double blendA2c = biquadA[biq_a2] * (1.0 - m) + biquadA2[biq_a2] * m;
-            double blendB1 = biquadA[biq_b1] * (1.0 - m) + biquadA2[biq_b1] * m;
-            double blendB2 = biquadA[biq_b2] * (1.0 - m) + biquadA2[biq_b2] * m;
+            if (morphSmooth2)
+            {
+                // === SMOOTH2: Parameter-space interpolation ===
+                double blendFreq = biquadA[biq_freq] * (1.0 - m) + biquadA2[biq_freq] * m;
+                double blendReso = biquadA[biq_reso] * (1.0 - m) + biquadA2[biq_reso] * m;
 
-            biquadA[biq_a0] = blendA0; biquadA[biq_a1] = blendA1;
-            biquadA[biq_a2] = blendA2c; biquadA[biq_b1] = blendB1;
-            biquadA[biq_b2] = blendB2;
+                double Kb = tan(juce::MathConstants<double>::pi * blendFreq);
+                double normb = 1.0 / (1.0 + Kb / blendReso + Kb * Kb);
+
+                double blend_b1 = 2.0 * (Kb * Kb - 1.0) * normb;
+                double blend_b2 = (1.0 - Kb / blendReso + Kb * Kb) * normb;
+
+                // Compute numerators for both types using the SAME K and norm
+                double numA_a0, numA_a1, numA_a2;
+                switch (filterType) {
+                    case Lowpass:  numA_a0 = Kb*Kb*normb; numA_a1 = 2.0*numA_a0; numA_a2 = numA_a0; break;
+                    case Highpass: numA_a0 = normb; numA_a1 = -2.0*numA_a0; numA_a2 = numA_a0; break;
+                    case Bandpass: numA_a0 = Kb/blendReso*normb; numA_a1 = 0.0; numA_a2 = -numA_a0; break;
+                    case Notch:    numA_a0 = (1.0+Kb*Kb)*normb; numA_a1 = blend_b1; numA_a2 = numA_a0; break;
+                    default:       numA_a0 = numA_a1 = numA_a2 = 0.0; break;
+                }
+                double numB_a0, numB_a1, numB_a2;
+                switch (filterTypeB) {
+                    case Lowpass:  numB_a0 = Kb*Kb*normb; numB_a1 = 2.0*numB_a0; numB_a2 = numB_a0; break;
+                    case Highpass: numB_a0 = normb; numB_a1 = -2.0*numB_a0; numB_a2 = numB_a0; break;
+                    case Bandpass: numB_a0 = Kb/blendReso*normb; numB_a1 = 0.0; numB_a2 = -numB_a0; break;
+                    case Notch:    numB_a0 = (1.0+Kb*Kb)*normb; numB_a1 = blend_b1; numB_a2 = numB_a0; break;
+                    default:       numB_a0 = numB_a1 = numB_a2 = 0.0; break;
+                }
+
+                biquadA[biq_a0] = numA_a0 * (1.0 - m) + numB_a0 * m;
+                biquadA[biq_a1] = numA_a1 * (1.0 - m) + numB_a1 * m;
+                biquadA[biq_a2] = numA_a2 * (1.0 - m) + numB_a2 * m;
+                biquadA[biq_b1] = blend_b1;
+                biquadA[biq_b2] = blend_b2;
+            }
+            else if (morphSmooth3)
+            {
+                // === SMOOTH3: ARMAdillo log-domain interpolation ===
+                double b1p_A = biquadA[biq_b1] + 2.0;
+                double b2p_A = 1.0 - biquadA[biq_b2];
+                double b1p_B = biquadA2[biq_b1] + 2.0;
+                double b2p_B = 1.0 - biquadA2[biq_b2];
+
+                const double eps = 1e-20;
+                double log_b1p_A = log2(fmax(b1p_A, eps));
+                double log_b2p_A = log2(fmax(b2p_A, eps));
+                double log_b1p_B = log2(fmax(b1p_B, eps));
+                double log_b2p_B = log2(fmax(b2p_B, eps));
+
+                double log_b1p = log_b1p_A * (1.0 - m) + log_b1p_B * m;
+                double log_b2p = log_b2p_A * (1.0 - m) + log_b2p_B * m;
+
+                double b1p = exp2(log_b1p);
+                double b2p = exp2(log_b2p);
+
+                biquadA[biq_b1] = b1p - 2.0;
+                biquadA[biq_b2] = 1.0 - b2p;
+
+                biquadA[biq_a0] = biquadA[biq_a0] * (1.0 - m) + biquadA2[biq_a0] * m;
+                biquadA[biq_a1] = biquadA[biq_a1] * (1.0 - m) + biquadA2[biq_a1] * m;
+                biquadA[biq_a2] = biquadA[biq_a2] * (1.0 - m) + biquadA2[biq_a2] * m;
+            }
+            else
+            {
+                // === Default: Raw coefficient lerp (existing behavior) ===
+                double blendA0  = biquadA[biq_a0] * (1.0 - m) + biquadA2[biq_a0] * m;
+                double blendA1  = biquadA[biq_a1] * (1.0 - m) + biquadA2[biq_a1] * m;
+                double blendA2c = biquadA[biq_a2] * (1.0 - m) + biquadA2[biq_a2] * m;
+                double blendB1  = biquadA[biq_b1] * (1.0 - m) + biquadA2[biq_b1] * m;
+                double blendB2  = biquadA[biq_b2] * (1.0 - m) + biquadA2[biq_b2] * m;
+                biquadA[biq_a0] = blendA0; biquadA[biq_a1] = blendA1;
+                biquadA[biq_a2] = blendA2c; biquadA[biq_b1] = blendB1;
+                biquadA[biq_b2] = blendB2;
+            }
+
             for (int x = 0; x < 7; x++) { biquadD[x] = biquadC[x] = biquadB[x] = biquadA[x]; }
 
             double blendClip = smoothedClipA * (1.0 - m) + smoothedClipB * m;
