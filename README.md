@@ -19,7 +19,7 @@ Drop into your VST3 folder (typically `C:\Program Files\Common Files\VST3\`) and
 
 - **4 Filter Types**: Lowpass, Highpass, Bandpass, Notch
 - **Filter Morphing**: Smoothly blend between two filter types (A and B) with independent type selection
-- **Cascaded Biquad Architecture**: Up to 4 cascaded filter stages (12-48 dB/octave) controlled by the Resonance knob
+- **Cascaded Biquad Architecture**: Up to 4 cascaded filter stages (12-48 dB/octave) controlled by the Poles knob
 - **LFO Modulation**: Tempo-syncable LFO with adjustable speed and depth, targeting Cutoff, Morph, or both
 - **Z-Output Stage**: Optional Airwindows output processing stage for analog character
 - **Input & Output Level Controls**: Input gain (-20dB to +20dB) drives the filter's saturation character; Output gain for final level adjustment
